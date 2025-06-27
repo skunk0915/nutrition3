@@ -87,17 +87,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     mr.meal_date,
                     mr.meal_type,
                     mr.quantity_g,
-                    fn.food_name,
-                    fn.energy_kcal,
-                    fn.protein_g,
-                    fn.fat_g,
-                    fn.carbohydrate_g,
-                    (fn.energy_kcal * mr.quantity_g / 100) as consumed_energy_kcal,
-                    (fn.protein_g * mr.quantity_g / 100) as consumed_protein_g,
-                    (fn.fat_g * mr.quantity_g / 100) as consumed_fat_g,
-                    (fn.carbohydrate_g * mr.quantity_g / 100) as consumed_carbohydrate_g
+                    f.食品名 as food_name,
+                    f.カロリー as energy_kcal,
+                    f.たんぱく質 as protein_g,
+                    f.脂質 as fat_g,
+                    f.炭水化物 as carbohydrate_g,
+                    (f.カロリー * mr.quantity_g / 100) as consumed_energy_kcal,
+                    (f.たんぱく質 * mr.quantity_g / 100) as consumed_protein_g,
+                    (f.脂質 * mr.quantity_g / 100) as consumed_fat_g,
+                    (f.炭水化物 * mr.quantity_g / 100) as consumed_carbohydrate_g
                 FROM meal_records mr
-                JOIN food_nutrition fn ON mr.food_id = fn.food_id
+                JOIN foods f ON mr.food_id = f.id
                 WHERE mr.user_id = 1 AND mr.meal_date = :date
                 ORDER BY mr.meal_type, mr.record_id
             ";
@@ -110,12 +110,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $sql = "
                 SELECT 
                     meal_date,
-                    SUM(fn.energy_kcal * mr.quantity_g / 100) as total_energy_kcal,
-                    SUM(fn.protein_g * mr.quantity_g / 100) as total_protein_g,
-                    SUM(fn.fat_g * mr.quantity_g / 100) as total_fat_g,
-                    SUM(fn.carbohydrate_g * mr.quantity_g / 100) as total_carbohydrate_g
+                    SUM(f.カロリー * mr.quantity_g / 100) as total_energy_kcal,
+                    SUM(f.たんぱく質 * mr.quantity_g / 100) as total_protein_g,
+                    SUM(f.脂質 * mr.quantity_g / 100) as total_fat_g,
+                    SUM(f.炭水化物 * mr.quantity_g / 100) as total_carbohydrate_g
                 FROM meal_records mr
-                JOIN food_nutrition fn ON mr.food_id = fn.food_id
+                JOIN foods f ON mr.food_id = f.id
                 WHERE mr.user_id = 1 
                     AND mr.meal_date BETWEEN :start_date AND :end_date
                 GROUP BY meal_date

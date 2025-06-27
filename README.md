@@ -36,7 +36,7 @@ nutrition3/
 ## データベース設計
 
 ### テーブル構成
-- `food_nutrition`: 食品栄養情報（100以上の栄養素データ）
+- `foods`: 食品栄養情報（100以上の栄養素データ）
 - `meal_records`: 食事記録
 - `nutrition_targets`: 栄養目標値
 - `daily_nutrition_summary`: 日別栄養集計ビュー

@@ -238,17 +238,8 @@ class NutritionApp {
             }
 
             const achievements = data.achievements;
-            const labels = ['エネルギー', 'タンパク質', '脂質', '炭水化物', '食物繊維', 'ビタミンC', 'カルシウム', '鉄'];
-            const rates = [
-                achievements.energy.rate,
-                achievements.protein.rate,
-                achievements.fat.rate,
-                achievements.carbohydrate.rate,
-                achievements.fiber.rate,
-                achievements.vitamin_c.rate,
-                achievements.calcium.rate,
-                achievements.iron.rate
-            ];
+            const labels = Object.keys(achievements);
+            const rates = Object.values(achievements).map(item => item.rate);
 
             this.charts.daily = new Chart(ctx, {
                 type: 'bar',
@@ -277,6 +268,16 @@ class NutritionApp {
                                 callback: function(value) {
                                     return value + '%';
                                 }
+                            },
+                            title: {
+                                display: true,
+                                text: '達成率 (%)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '栄養素'
                             }
                         }
                     },
@@ -289,7 +290,9 @@ class NutritionApp {
                                 label: function(context) {
                                     const nutrient = Object.keys(achievements)[context.dataIndex];
                                     const data = achievements[nutrient];
-                                    return `${data.consumed.toFixed(1)}${data.unit} / ${data.target}${data.unit} (${context.parsed.y.toFixed(1)}%)`;
+                                    const consumed = parseFloat(data.consumed) || 0;
+                                    const target = parseFloat(data.target) || 1;
+                                    return `${consumed.toFixed(1)}${data.unit} / ${target}${data.unit} (${context.parsed.y.toFixed(1)}%)`;
                                 }
                             }
                         }
@@ -330,17 +333,31 @@ class NutritionApp {
                     labels: labels,
                     datasets: [
                         {
-                            label: 'エネルギー (kcal)',
-                            data: data.data.map(item => item.total_energy_kcal),
+                            label: 'エネルギー達成率 (%)',
+                            data: data.data.map(item => (item.total_energy_kcal / 2000) * 100),
                             borderColor: '#667eea',
                             backgroundColor: 'rgba(102, 126, 234, 0.1)',
                             tension: 0.4
                         },
                         {
-                            label: 'タンパク質 (g × 10)',
-                            data: data.data.map(item => item.total_protein_g * 10),
+                            label: 'タンパク質達成率 (%)',
+                            data: data.data.map(item => (item.total_protein_g / 60) * 100),
                             borderColor: '#f093fb',
                             backgroundColor: 'rgba(240, 147, 251, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: '脂質達成率 (%)',
+                            data: data.data.map(item => (item.total_fat_g / 65) * 100),
+                            borderColor: '#f6d55c',
+                            backgroundColor: 'rgba(246, 213, 92, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: '炭水化物達成率 (%)',
+                            data: data.data.map(item => (item.total_carbohydrate_g / 250) * 100),
+                            borderColor: '#20bf6b',
+                            backgroundColor: 'rgba(32, 191, 107, 0.1)',
                             tension: 0.4
                         }
                     ]
@@ -350,7 +367,17 @@ class NutritionApp {
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            beginAtZero: true
+                            beginAtZero: true,
+                            max: 150,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: '達成率 (%)'
+                            }
                         }
                     },
                     plugins: {
@@ -394,9 +421,14 @@ class NutritionApp {
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'エネルギー摂取量 (kcal)',
-                        data: data.data.map(item => item.total_energy_kcal),
-                        backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                        label: 'エネルギー達成率 (%)',
+                        data: data.data.map(item => (item.total_energy_kcal / 2000) * 100),
+                        backgroundColor: data.data.map(item => {
+                            const rate = (item.total_energy_kcal / 2000) * 100;
+                            return rate >= 100 ? 'rgba(40, 167, 69, 0.8)' : 
+                                   rate >= 80 ? 'rgba(255, 193, 7, 0.8)' : 
+                                   rate >= 50 ? 'rgba(253, 126, 20, 0.8)' : 'rgba(220, 53, 69, 0.8)';
+                        }),
                         borderColor: '#667eea',
                         borderWidth: 1
                     }]
@@ -406,7 +438,17 @@ class NutritionApp {
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            beginAtZero: true
+                            beginAtZero: true,
+                            max: 150,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: '達成率 (%)'
+                            }
                         },
                         x: {
                             title: {

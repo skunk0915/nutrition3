@@ -17,39 +17,38 @@ if (strlen($query) < 2) {
 }
 
 try {
-    // 部分一致検索（LIKE）とフルテキスト検索を組み合わせ
+    // 部分一致検索（LIKE）を使用
     $sql = "
         SELECT 
-            food_id,
-            food_name,
-            food_name_en,
-            category,
-            energy_kcal,
-            protein_g,
-            fat_g,
-            carbohydrate_g
-        FROM food_nutrition 
+            id as food_id,
+            食品名 as food_name,
+            食品名英語 as food_name_en,
+            グループ as category,
+            カロリー as energy_kcal,
+            たんぱく質 as protein_g,
+            脂質 as fat_g,
+            炭水化物 as carbohydrate_g
+        FROM foods 
         WHERE 
-            food_name LIKE :query OR 
-            food_name_en LIKE :query_en OR
-            (MATCH(food_name, food_name_en) AGAINST(:fulltext_query IN BOOLEAN MODE))
+            食品名 LIKE :query1 OR 
+            食品名英語 LIKE :query_en
         ORDER BY 
             CASE 
-                WHEN food_name = :exact_match THEN 1
-                WHEN food_name LIKE :start_query THEN 2
-                WHEN food_name LIKE :query THEN 3
+                WHEN 食品名 = :exact_match THEN 1
+                WHEN 食品名 LIKE :start_query THEN 2
+                WHEN 食品名 LIKE :query2 THEN 3
                 ELSE 4
             END,
-            food_name
+            食品名
         LIMIT :limit
     ";
     
     $stmt = $pdo->prepare($sql);
-    $stmt->bindValue(':query', '%' . $query . '%', PDO::PARAM_STR);
+    $stmt->bindValue(':query1', '%' . $query . '%', PDO::PARAM_STR);
+    $stmt->bindValue(':query2', '%' . $query . '%', PDO::PARAM_STR);
     $stmt->bindValue(':query_en', '%' . $query . '%', PDO::PARAM_STR);
     $stmt->bindValue(':exact_match', $query, PDO::PARAM_STR);
     $stmt->bindValue(':start_query', $query . '%', PDO::PARAM_STR);
-    $stmt->bindValue(':fulltext_query', $query . '*', PDO::PARAM_STR);
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     
     $stmt->execute();

@@ -44,54 +44,78 @@ try {
                 errorResponse('データが見つかりません');
             }
             
-            // 達成率計算
+            // 達成率計算（主要栄養素を拡大）
             $achievements = [
-                'energy' => [
-                    'consumed' => $result['consumed_energy_kcal'],
-                    'target' => $result['energy_kcal_target'],
-                    'rate' => $result['energy_kcal_target'] > 0 ? ($result['consumed_energy_kcal'] / $result['energy_kcal_target']) * 100 : 0,
+                'エネルギー' => [
+                    'consumed' => floatval($result['consumed_energy_kcal'] ?? 0),
+                    'target' => floatval($result['energy_kcal_target'] ?? 2000),
+                    'rate' => ($result['energy_kcal_target'] ?? 2000) > 0 ? (floatval($result['consumed_energy_kcal'] ?? 0) / floatval($result['energy_kcal_target'] ?? 2000)) * 100 : 0,
                     'unit' => 'kcal'
                 ],
-                'protein' => [
-                    'consumed' => $result['consumed_protein_g'],
-                    'target' => $result['protein_g_target'],
-                    'rate' => $result['protein_g_target'] > 0 ? ($result['consumed_protein_g'] / $result['protein_g_target']) * 100 : 0,
+                'タンパク質' => [
+                    'consumed' => floatval($result['consumed_protein_g'] ?? 0),
+                    'target' => floatval($result['protein_g_target'] ?? 60),
+                    'rate' => ($result['protein_g_target'] ?? 60) > 0 ? (floatval($result['consumed_protein_g'] ?? 0) / floatval($result['protein_g_target'] ?? 60)) * 100 : 0,
                     'unit' => 'g'
                 ],
-                'fat' => [
-                    'consumed' => $result['consumed_fat_g'],
-                    'target' => $result['fat_g_target'],
-                    'rate' => $result['fat_g_target'] > 0 ? ($result['consumed_fat_g'] / $result['fat_g_target']) * 100 : 0,
+                '脂質' => [
+                    'consumed' => floatval($result['consumed_fat_g'] ?? 0),
+                    'target' => floatval($result['fat_g_target'] ?? 65),
+                    'rate' => ($result['fat_g_target'] ?? 65) > 0 ? (floatval($result['consumed_fat_g'] ?? 0) / floatval($result['fat_g_target'] ?? 65)) * 100 : 0,
                     'unit' => 'g'
                 ],
-                'carbohydrate' => [
-                    'consumed' => $result['consumed_carbohydrate_g'],
-                    'target' => $result['carbohydrate_g_target'],
-                    'rate' => $result['carbohydrate_g_target'] > 0 ? ($result['consumed_carbohydrate_g'] / $result['carbohydrate_g_target']) * 100 : 0,
+                '炭水化物' => [
+                    'consumed' => floatval($result['consumed_carbohydrate_g'] ?? 0),
+                    'target' => floatval($result['carbohydrate_g_target'] ?? 250),
+                    'rate' => ($result['carbohydrate_g_target'] ?? 250) > 0 ? (floatval($result['consumed_carbohydrate_g'] ?? 0) / floatval($result['carbohydrate_g_target'] ?? 250)) * 100 : 0,
                     'unit' => 'g'
                 ],
-                'fiber' => [
-                    'consumed' => $result['consumed_fiber_g'],
-                    'target' => $result['fiber_g_target'],
-                    'rate' => $result['fiber_g_target'] > 0 ? ($result['consumed_fiber_g'] / $result['fiber_g_target']) * 100 : 0,
+                '食物繊維' => [
+                    'consumed' => floatval($result['consumed_fiber_g'] ?? 0),
+                    'target' => floatval($result['fiber_g_target'] ?? 25),
+                    'rate' => ($result['fiber_g_target'] ?? 25) > 0 ? (floatval($result['consumed_fiber_g'] ?? 0) / floatval($result['fiber_g_target'] ?? 25)) * 100 : 0,
                     'unit' => 'g'
                 ],
-                'vitamin_c' => [
-                    'consumed' => $result['consumed_vitamin_c_mg'],
-                    'target' => $result['vitamin_c_mg_target'],
-                    'rate' => $result['vitamin_c_mg_target'] > 0 ? ($result['consumed_vitamin_c_mg'] / $result['vitamin_c_mg_target']) * 100 : 0,
+                'ナトリウム' => [
+                    'consumed' => floatval($result['consumed_sodium_mg'] ?? 0),
+                    'target' => floatval($result['sodium_mg_target'] ?? 2300),
+                    'rate' => ($result['sodium_mg_target'] ?? 2300) > 0 ? (floatval($result['consumed_sodium_mg'] ?? 0) / floatval($result['sodium_mg_target'] ?? 2300)) * 100 : 0,
                     'unit' => 'mg'
                 ],
-                'calcium' => [
-                    'consumed' => $result['consumed_calcium_mg'],
-                    'target' => $result['calcium_mg_target'],
-                    'rate' => $result['calcium_mg_target'] > 0 ? ($result['consumed_calcium_mg'] / $result['calcium_mg_target']) * 100 : 0,
+                'ビタミンA' => [
+                    'consumed' => floatval($result['consumed_vitamin_a_ug'] ?? 0),
+                    'target' => floatval($result['vitamin_a_ug_target'] ?? 800),
+                    'rate' => ($result['vitamin_a_ug_target'] ?? 800) > 0 ? (floatval($result['consumed_vitamin_a_ug'] ?? 0) / floatval($result['vitamin_a_ug_target'] ?? 800)) * 100 : 0,
+                    'unit' => 'μg'
+                ],
+                'ビタミンB1' => [
+                    'consumed' => floatval($result['consumed_vitamin_b1_mg'] ?? 0),
+                    'target' => floatval($result['vitamin_b1_mg_target'] ?? 1.2),
+                    'rate' => ($result['vitamin_b1_mg_target'] ?? 1.2) > 0 ? (floatval($result['consumed_vitamin_b1_mg'] ?? 0) / floatval($result['vitamin_b1_mg_target'] ?? 1.2)) * 100 : 0,
                     'unit' => 'mg'
                 ],
-                'iron' => [
-                    'consumed' => $result['consumed_iron_mg'],
-                    'target' => $result['iron_mg_target'],
-                    'rate' => $result['iron_mg_target'] > 0 ? ($result['consumed_iron_mg'] / $result['iron_mg_target']) * 100 : 0,
+                'ビタミンB2' => [
+                    'consumed' => floatval($result['consumed_vitamin_b2_mg'] ?? 0),
+                    'target' => floatval($result['vitamin_b2_mg_target'] ?? 1.4),
+                    'rate' => ($result['vitamin_b2_mg_target'] ?? 1.4) > 0 ? (floatval($result['consumed_vitamin_b2_mg'] ?? 0) / floatval($result['vitamin_b2_mg_target'] ?? 1.4)) * 100 : 0,
+                    'unit' => 'mg'
+                ],
+                'ビタミンC' => [
+                    'consumed' => floatval($result['consumed_vitamin_c_mg'] ?? 0),
+                    'target' => floatval($result['vitamin_c_mg_target'] ?? 90),
+                    'rate' => ($result['vitamin_c_mg_target'] ?? 90) > 0 ? (floatval($result['consumed_vitamin_c_mg'] ?? 0) / floatval($result['vitamin_c_mg_target'] ?? 90)) * 100 : 0,
+                    'unit' => 'mg'
+                ],
+                'カルシウム' => [
+                    'consumed' => floatval($result['consumed_calcium_mg'] ?? 0),
+                    'target' => floatval($result['calcium_mg_target'] ?? 1000),
+                    'rate' => ($result['calcium_mg_target'] ?? 1000) > 0 ? (floatval($result['consumed_calcium_mg'] ?? 0) / floatval($result['calcium_mg_target'] ?? 1000)) * 100 : 0,
+                    'unit' => 'mg'
+                ],
+                '鉄' => [
+                    'consumed' => floatval($result['consumed_iron_mg'] ?? 0),
+                    'target' => floatval($result['iron_mg_target'] ?? 8),
+                    'rate' => ($result['iron_mg_target'] ?? 8) > 0 ? (floatval($result['consumed_iron_mg'] ?? 0) / floatval($result['iron_mg_target'] ?? 8)) * 100 : 0,
                     'unit' => 'mg'
                 ]
             ];
@@ -104,12 +128,12 @@ try {
             $sql = "
                 SELECT 
                     meal_type,
-                    SUM(fn.energy_kcal * mr.quantity_g / 100) as meal_energy_kcal,
-                    SUM(fn.protein_g * mr.quantity_g / 100) as meal_protein_g,
-                    SUM(fn.fat_g * mr.quantity_g / 100) as meal_fat_g,
-                    SUM(fn.carbohydrate_g * mr.quantity_g / 100) as meal_carbohydrate_g
+                    SUM(f.カロリー * mr.quantity_g / 100) as meal_energy_kcal,
+                    SUM(f.たんぱく質 * mr.quantity_g / 100) as meal_protein_g,
+                    SUM(f.脂質 * mr.quantity_g / 100) as meal_fat_g,
+                    SUM(f.炭水化物 * mr.quantity_g / 100) as meal_carbohydrate_g
                 FROM meal_records mr
-                JOIN food_nutrition fn ON mr.food_id = fn.food_id
+                JOIN foods f ON mr.food_id = f.id
                 WHERE mr.user_id = 1 AND mr.meal_date = :date
                 GROUP BY meal_type
                 ORDER BY 
@@ -136,12 +160,12 @@ try {
             $sql = "
                 SELECT 
                     meal_date,
-                    COALESCE(SUM(fn.energy_kcal * mr.quantity_g / 100), 0) as total_energy_kcal,
-                    COALESCE(SUM(fn.protein_g * mr.quantity_g / 100), 0) as total_protein_g,
-                    COALESCE(SUM(fn.fat_g * mr.quantity_g / 100), 0) as total_fat_g,
-                    COALESCE(SUM(fn.carbohydrate_g * mr.quantity_g / 100), 0) as total_carbohydrate_g
+                    COALESCE(SUM(f.カロリー * mr.quantity_g / 100), 0) as total_energy_kcal,
+                    COALESCE(SUM(f.たんぱく質 * mr.quantity_g / 100), 0) as total_protein_g,
+                    COALESCE(SUM(f.脂質 * mr.quantity_g / 100), 0) as total_fat_g,
+                    COALESCE(SUM(f.炭水化物 * mr.quantity_g / 100), 0) as total_carbohydrate_g
                 FROM meal_records mr
-                JOIN food_nutrition fn ON mr.food_id = fn.food_id
+                JOIN foods f ON mr.food_id = f.id
                 WHERE mr.user_id = 1 
                     AND mr.meal_date BETWEEN :start_date AND :end_date
                 GROUP BY meal_date
@@ -193,12 +217,12 @@ try {
             $sql = "
                 SELECT 
                     meal_date,
-                    SUM(fn.energy_kcal * mr.quantity_g / 100) as total_energy_kcal,
-                    SUM(fn.protein_g * mr.quantity_g / 100) as total_protein_g,
-                    SUM(fn.fat_g * mr.quantity_g / 100) as total_fat_g,
-                    SUM(fn.carbohydrate_g * mr.quantity_g / 100) as total_carbohydrate_g
+                    SUM(f.カロリー * mr.quantity_g / 100) as total_energy_kcal,
+                    SUM(f.たんぱく質 * mr.quantity_g / 100) as total_protein_g,
+                    SUM(f.脂質 * mr.quantity_g / 100) as total_fat_g,
+                    SUM(f.炭水化物 * mr.quantity_g / 100) as total_carbohydrate_g
                 FROM meal_records mr
-                JOIN food_nutrition fn ON mr.food_id = fn.food_id
+                JOIN foods f ON mr.food_id = f.id
                 WHERE mr.user_id = 1 
                     AND mr.meal_date BETWEEN :start_date AND :end_date
                 GROUP BY meal_date
