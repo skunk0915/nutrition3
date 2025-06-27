@@ -50,6 +50,13 @@ class NutritionApp {
         this.initializePeriodControls();
     }
 
+    hexToRgba(hex, alpha) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
     initEventListeners() {
         // 食事記録フォーム
         document.getElementById('meal-form').addEventListener('submit', (e) => {
@@ -138,8 +145,8 @@ class NutritionApp {
                 const nutrientKey = this.nutrients[nutrient].key;
                 const target = this.nutrients[nutrient].target;
                 const meal = data.meals.find(m => m.meal_type === mealType);
-                const value = meal ? parseFloat(meal[nutrientKey] || 0) : 0;
-                return (value / target) * 100; // 達成率に変換
+                const value = meal ? Math.max(0, parseFloat(meal[nutrientKey] || 0)) : 0;
+                return Math.max(0, (value / target) * 100); // 達成率に変換（負の値を防ぐ）
             }),
             backgroundColor: mealColors[mealType],
             borderColor: mealColors[mealType].replace('0.8', '1'),
@@ -231,21 +238,29 @@ class NutritionApp {
             return `${date.getMonth() + 1}/${date.getDate()}`;
         });
 
-        // 主要な4つの栄養素のみ表示
-        const mainNutrients = ['エネルギー', 'タンパク質', '脂質', '炭水化物'];
-        const colors = ['#667eea', '#f093fb', '#f6d55c', '#20bf6b'];
+        // 全栄養素を表示（色を循環させる）
+        const colors = [
+            '#667eea', '#f093fb', '#f6d55c', '#20bf6b', '#ff6b6b', '#4ecdc4', 
+            '#45b7d1', '#96ceb4', '#ffeaa7', '#dda0dd', '#98d8c8', '#f7dc6f',
+            '#bb8fce', '#85c1e9', '#f8c471', '#82e0aa', '#f1948a', '#85929e',
+            '#d5a6bd', '#a9cce3', '#f9e79f', '#a2d9ce', '#d7bde2', '#aed6f1',
+            '#fad7a0', '#a9dfbf', '#f5b7b1', '#d0d3d4', '#e8daef', '#d6eaf8',
+            '#fcf3cf', '#d1f2eb', '#fadbd8', '#eaeded', '#f4ecf7', '#ebf5fb'
+        ];
 
-        const datasets = mainNutrients.map((nutrient, index) => {
+        const datasets = Object.keys(this.nutrients).map((nutrient, index) => {
             const nutrientInfo = this.nutrients[nutrient];
             return {
                 label: `${nutrient}達成率 (%)`,
                 data: data.data.map(item => {
-                    const value = parseFloat(item[nutrientInfo.key] || 0);
-                    return (value / nutrientInfo.target) * 100;
+                    const value = Math.max(0, parseFloat(item[nutrientInfo.key] || 0));
+                    return Math.max(0, (value / nutrientInfo.target) * 100);
                 }),
-                borderColor: colors[index],
-                backgroundColor: colors[index].replace('1)', '0.1)'),
-                tension: 0.4
+                borderColor: colors[index % colors.length],
+                backgroundColor: this.hexToRgba(colors[index % colors.length], 0.1),
+                tension: 0.4,
+                borderWidth: 2,
+                pointRadius: 3
             };
         });
 
@@ -369,9 +384,18 @@ class NutritionApp {
         const quantities = formData.getAll('quantity[]');
         
         const foods = [];
+        const inputs = document.querySelectorAll('input[name="food_name[]"]');
+        
         for (let i = 0; i < foodNames.length; i++) {
-            const input = document.querySelector(`input[name="food_name[]"][value="${foodNames[i]}"]`);
-            const foodId = input ? input.dataset.foodId : null;
+            let foodId = null;
+            
+            // 対応するinput要素を見つける
+            for (let j = 0; j < inputs.length; j++) {
+                if (inputs[j].value === foodNames[i]) {
+                    foodId = inputs[j].dataset.foodId;
+                    break;
+                }
+            }
             
             if (!foodId) {
                 alert(`${foodNames[i]} は有効な食品を選択してください`);
