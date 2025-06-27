@@ -55,18 +55,20 @@
 
             <section class="charts-section">
                 <div class="chart-container">
-                    <h2>今日の栄養達成率</h2>
+                    <h2>今日の栄養素充足率</h2>
                     <canvas id="daily-nutrition-chart"></canvas>
                 </div>
 
                 <div class="chart-container">
-                    <h2>週間栄養推移</h2>
+                    <h2>栄養推移</h2>
+                    <div class="period-controls">
+                        <label for="start-date">開始日:</label>
+                        <input type="date" id="start-date" name="start_date">
+                        <label for="end-date">終了日:</label>
+                        <input type="date" id="end-date" name="end_date">
+                        <button type="button" id="update-period" class="btn-secondary">期間更新</button>
+                    </div>
                     <canvas id="weekly-trend-chart"></canvas>
-                </div>
-
-                <div class="chart-container">
-                    <h2>月間栄養摂取量</h2>
-                    <canvas id="monthly-intake-chart"></canvas>
                 </div>
             </section>
         </main>

@@ -1,150 +1,364 @@
 class NutritionApp {
     constructor() {
-        this.apiBase = 'api/';
-        this.foodEntryCount = 1;
         this.charts = {};
+        this.nutrients = {
+            'エネルギー': { target: 2000, unit: 'kcal', key: 'energy_kcal' },
+            'タンパク質': { target: 60, unit: 'g', key: 'protein_g' },
+            '脂質': { target: 65, unit: 'g', key: 'fat_g' },
+            '飽和脂肪酸': { target: 18, unit: 'g', key: 'saturated_fat_g' },
+            'n-6系脂肪酸': { target: 10, unit: 'g', key: 'n6_fat_g' },
+            'n-3系脂肪酸': { target: 2, unit: 'g', key: 'n3_fat_g' },
+            '炭水化物': { target: 250, unit: 'g', key: 'carbohydrate_g' },
+            '食物繊維': { target: 25, unit: 'g', key: 'fiber_g' },
+            'ビタミンA': { target: 800, unit: 'μg', key: 'vitamin_a_ug' },
+            'ビタミンD': { target: 10, unit: 'μg', key: 'vitamin_d_ug' },
+            'ビタミンE': { target: 15, unit: 'mg', key: 'vitamin_e_mg' },
+            'ビタミンK': { target: 120, unit: 'μg', key: 'vitamin_k_ug' },
+            'ビタミンB1': { target: 1.2, unit: 'mg', key: 'vitamin_b1_mg' },
+            'ビタミンB2': { target: 1.4, unit: 'mg', key: 'vitamin_b2_mg' },
+            'ビタミンB6': { target: 1.4, unit: 'mg', key: 'vitamin_b6_mg' },
+            'ビタミンB12': { target: 2.4, unit: 'μg', key: 'vitamin_b12_ug' },
+            'ナイアシン': { target: 16, unit: 'mg', key: 'niacin_mg' },
+            '葉酸': { target: 400, unit: 'μg', key: 'folate_ug' },
+            'パントテン酸': { target: 5, unit: 'mg', key: 'pantothenic_acid_mg' },
+            'ビオチン': { target: 50, unit: 'μg', key: 'biotin_ug' },
+            'ビタミンC': { target: 90, unit: 'mg', key: 'vitamin_c_mg' },
+            'ナトリウム': { target: 2300, unit: 'mg', key: 'sodium_mg' },
+            'カリウム': { target: 3500, unit: 'mg', key: 'potassium_mg' },
+            'カルシウム': { target: 1000, unit: 'mg', key: 'calcium_mg' },
+            'マグネシウム': { target: 400, unit: 'mg', key: 'magnesium_mg' },
+            'リン': { target: 700, unit: 'mg', key: 'phosphorus_mg' },
+            '鉄': { target: 8, unit: 'mg', key: 'iron_mg' },
+            '亜鉛': { target: 11, unit: 'mg', key: 'zinc_mg' },
+            '銅': { target: 1, unit: 'mg', key: 'copper_mg' },
+            'マンガン': { target: 4, unit: 'mg', key: 'manganese_mg' },
+            'ヨウ素': { target: 150, unit: 'μg', key: 'iodine_ug' },
+            'セレン': { target: 60, unit: 'μg', key: 'selenium_ug' },
+            'クロム': { target: 35, unit: 'μg', key: 'chromium_ug' },
+            'モリブデン': { target: 45, unit: 'μg', key: 'molybdenum_ug' }
+        };
+        this.periodSettings = {
+            startDate: null,
+            endDate: null
+        };
         this.init();
     }
 
     init() {
-        this.setupEventListeners();
-        this.setTodayDate();
-        this.loadCharts();
+        this.initEventListeners();
+        this.loadInitialData();
+        this.initializePeriodControls();
     }
 
-    setupEventListeners() {
+    initEventListeners() {
         // 食事記録フォーム
         document.getElementById('meal-form').addEventListener('submit', (e) => {
             e.preventDefault();
             this.submitMealRecord();
         });
 
-        // 食品追加ボタン
+        // 食品入力欄追加
         document.getElementById('add-food').addEventListener('click', () => {
-            this.addFoodEntry();
+            this.addFoodInput();
         });
 
-        // 食品名入力でオートコンプリート
-        this.setupFoodSearch();
-    }
-
-    setTodayDate() {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('date').value = today;
-    }
-
-    setupFoodSearch() {
-        const foodNameInput = document.getElementById('food-name');
-        const suggestionsDiv = document.getElementById('suggestions');
-        let searchTimeout;
-
-        foodNameInput.addEventListener('input', (e) => {
-            const query = e.target.value.trim();
-            
-            if (query.length < 2) {
-                suggestionsDiv.style.display = 'none';
-                return;
-            }
-
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                this.searchFoods(query, suggestionsDiv, foodNameInput);
-            }, 300);
+        // 期間更新ボタン
+        document.getElementById('update-period').addEventListener('click', () => {
+            this.updatePeriod();
         });
 
-        // 入力フィールド外をクリックしたら候補を非表示
-        document.addEventListener('click', (e) => {
-            if (!foodNameInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
-                suggestionsDiv.style.display = 'none';
+        // 食品検索（動的に追加される要素に対応）
+        document.addEventListener('input', (e) => {
+            if (e.target.name === 'food_name[]') {
+                this.handleFoodSearch(e.target);
             }
         });
     }
 
-    async searchFoods(query, suggestionsDiv, targetInput) {
+    initializePeriodControls() {
+        const today = new Date();
+        const oneWeekAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+        
+        const startDate = oneWeekAgo.toISOString().split('T')[0];
+        const endDate = today.toISOString().split('T')[0];
+        
+        document.getElementById('start-date').value = startDate;
+        document.getElementById('end-date').value = endDate;
+        
+        this.periodSettings.startDate = startDate;
+        this.periodSettings.endDate = endDate;
+    }
+
+    loadInitialData() {
+        this.loadDailyNutrition();
+        this.loadWeeklyTrend();
+    }
+
+    async loadDailyNutrition() {
         try {
-            const response = await fetch(`${this.apiBase}food_search.php?q=${encodeURIComponent(query)}&limit=10`);
-            const foods = await response.json();
-
-            if (foods.error) {
-                console.error('食品検索エラー:', foods.error);
+            const today = new Date().toISOString().split('T')[0];
+            const response = await fetch(`api/nutrition_summary.php?type=daily_by_meal&date=${today}`);
+            const data = await response.json();
+            
+            if (data.error) {
+                console.error('データ取得エラー:', data.error);
                 return;
             }
+            
+            this.createStackedBarChart(data);
+        } catch (error) {
+            console.error('API呼び出しエラー:', error);
+        }
+    }
 
-            this.displayFoodSuggestions(foods, suggestionsDiv, targetInput);
+    createStackedBarChart(data) {
+        const ctx = document.getElementById('daily-nutrition-chart').getContext('2d');
+        
+        if (this.charts.daily) {
+            this.charts.daily.destroy();
+        }
+
+        const mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+        const mealColors = {
+            breakfast: 'rgba(255, 99, 132, 0.8)',
+            lunch: 'rgba(54, 162, 235, 0.8)',
+            dinner: 'rgba(255, 205, 86, 0.8)',
+            snack: 'rgba(75, 192, 192, 0.8)'
+        };
+        const mealLabels = {
+            breakfast: '朝食',
+            lunch: '昼食',
+            dinner: '夕食',
+            snack: '間食'
+        };
+
+        const datasets = mealTypes.map(mealType => ({
+            label: mealLabels[mealType],
+            data: Object.keys(this.nutrients).map(nutrient => {
+                const nutrientKey = this.nutrients[nutrient].key;
+                const target = this.nutrients[nutrient].target;
+                const meal = data.meals.find(m => m.meal_type === mealType);
+                const value = meal ? parseFloat(meal[nutrientKey] || 0) : 0;
+                return (value / target) * 100; // 達成率に変換
+            }),
+            backgroundColor: mealColors[mealType],
+            borderColor: mealColors[mealType].replace('0.8', '1'),
+            borderWidth: 1
+        }));
+
+        this.charts.daily = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(this.nutrients),
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true,
+                        title: {
+                            display: true,
+                            text: '栄養素'
+                        }
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        max: 200,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: '充足率 (%)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const nutrient = context.label;
+                                const mealType = context.dataset.label;
+                                return `${mealType}: ${context.parsed.y.toFixed(1)}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    async loadWeeklyTrend() {
+        try {
+            const params = new URLSearchParams({
+                type: 'weekly',
+                start_date: this.periodSettings.startDate,
+                end_date: this.periodSettings.endDate
+            });
+            
+            const response = await fetch(`api/nutrition_summary.php?${params}`);
+            const data = await response.json();
+            
+            if (data.error) {
+                console.error('データ取得エラー:', data.error);
+                return;
+            }
+            
+            this.createWeeklyChart(data);
+        } catch (error) {
+            console.error('API呼び出しエラー:', error);
+        }
+    }
+
+    createWeeklyChart(data) {
+        const ctx = document.getElementById('weekly-trend-chart').getContext('2d');
+        
+        if (this.charts.weekly) {
+            this.charts.weekly.destroy();
+        }
+
+        const labels = data.data.map(item => {
+            const date = new Date(item.meal_date);
+            return `${date.getMonth() + 1}/${date.getDate()}`;
+        });
+
+        // 主要な4つの栄養素のみ表示
+        const mainNutrients = ['エネルギー', 'タンパク質', '脂質', '炭水化物'];
+        const colors = ['#667eea', '#f093fb', '#f6d55c', '#20bf6b'];
+
+        const datasets = mainNutrients.map((nutrient, index) => {
+            const nutrientInfo = this.nutrients[nutrient];
+            return {
+                label: `${nutrient}達成率 (%)`,
+                data: data.data.map(item => {
+                    const value = parseFloat(item[nutrientInfo.key] || 0);
+                    return (value / nutrientInfo.target) * 100;
+                }),
+                borderColor: colors[index],
+                backgroundColor: colors[index].replace('1)', '0.1)'),
+                tension: 0.4
+            };
+        });
+
+        this.charts.weekly = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 150,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: '達成率 (%)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    }
+
+    updatePeriod() {
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        
+        if (!startDate || !endDate) {
+            alert('開始日と終了日を選択してください');
+            return;
+        }
+        
+        if (new Date(startDate) > new Date(endDate)) {
+            alert('開始日は終了日より前の日付を選択してください');
+            return;
+        }
+        
+        this.periodSettings.startDate = startDate;
+        this.periodSettings.endDate = endDate;
+        
+        // ローカルストレージに保存
+        localStorage.setItem('nutritionPeriod', JSON.stringify(this.periodSettings));
+        
+        this.loadWeeklyTrend();
+    }
+
+    async handleFoodSearch(input) {
+        const query = input.value.trim();
+        const suggestionsDiv = input.parentElement.querySelector('.suggestions');
+        
+        if (query.length < 2) {
+            suggestionsDiv.innerHTML = '';
+            return;
+        }
+
+        try {
+            const response = await fetch(`api/food_search.php?q=${encodeURIComponent(query)}&limit=10`);
+            const foods = await response.json();
+            
+            suggestionsDiv.innerHTML = '';
+            
+            foods.forEach(food => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = `${food.food_name} (${food.energy_kcal}kcal/100g)`;
+                div.addEventListener('click', () => {
+                    input.value = food.food_name;
+                    input.dataset.foodId = food.food_id;
+                    suggestionsDiv.innerHTML = '';
+                });
+                suggestionsDiv.appendChild(div);
+            });
         } catch (error) {
             console.error('食品検索エラー:', error);
         }
     }
 
-    displayFoodSuggestions(foods, suggestionsDiv, targetInput) {
-        if (foods.length === 0) {
-            suggestionsDiv.style.display = 'none';
-            return;
-        }
-
-        suggestionsDiv.innerHTML = '';
-        
-        foods.forEach(food => {
-            const suggestionItem = document.createElement('div');
-            suggestionItem.className = 'suggestion-item';
-            suggestionItem.innerHTML = `
-                <strong>${food.food_name}</strong>
-                <small>(${food.category} - ${food.energy_kcal}kcal/100g)</small>
-            `;
-            
-            suggestionItem.addEventListener('click', () => {
-                targetInput.value = food.food_name;
-                targetInput.dataset.foodId = food.food_id;
-                suggestionsDiv.style.display = 'none';
-            });
-            
-            suggestionsDiv.appendChild(suggestionItem);
-        });
-
-        suggestionsDiv.style.display = 'block';
-    }
-
-    addFoodEntry() {
-        this.foodEntryCount++;
-        const foodEntriesDiv = document.querySelector('.food-entries');
-        
-        const newEntry = document.createElement('div');
-        newEntry.className = 'food-entry';
-        newEntry.innerHTML = `
+    addFoodInput() {
+        const container = document.getElementById('food-inputs');
+        const newInput = document.createElement('div');
+        newInput.className = 'food-input';
+        newInput.innerHTML = `
             <div class="input-group">
-                <label for="food-name-${this.foodEntryCount}">食品名:</label>
-                <input type="text" id="food-name-${this.foodEntryCount}" name="food_name[]" placeholder="食品名を入力" required>
-                <div class="suggestions" id="suggestions-${this.foodEntryCount}"></div>
+                <label>食品名:</label>
+                <input type="text" name="food_name[]" placeholder="食品名を入力" required>
+                <div class="suggestions"></div>
             </div>
-            
             <div class="input-group">
-                <label for="quantity-${this.foodEntryCount}">分量 (g):</label>
-                <input type="number" id="quantity-${this.foodEntryCount}" name="quantity[]" min="1" required>
+                <label>分量 (g):</label>
+                <input type="number" name="quantity[]" min="1" required>
             </div>
-            
-            <button type="button" class="btn-remove" onclick="this.parentElement.remove()">削除</button>
+            <button type="button" class="remove-food">削除</button>
         `;
         
-        foodEntriesDiv.appendChild(newEntry);
-        
-        // 新しい入力フィールドにも検索機能を追加
-        const newFoodInput = newEntry.querySelector(`#food-name-${this.foodEntryCount}`);
-        const newSuggestionsDiv = newEntry.querySelector(`#suggestions-${this.foodEntryCount}`);
-        
-        let searchTimeout;
-        newFoodInput.addEventListener('input', (e) => {
-            const query = e.target.value.trim();
-            
-            if (query.length < 2) {
-                newSuggestionsDiv.style.display = 'none';
-                return;
-            }
-
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                this.searchFoods(query, newSuggestionsDiv, newFoodInput);
-            }, 300);
+        newInput.querySelector('.remove-food').addEventListener('click', () => {
+            newInput.remove();
         });
+        
+        container.appendChild(newInput);
     }
 
     async submitMealRecord() {
@@ -153,19 +367,14 @@ class NutritionApp {
         const mealType = formData.get('meal_type');
         const foodNames = formData.getAll('food_name[]');
         const quantities = formData.getAll('quantity[]');
-
-        if (!date || !mealType || foodNames.length === 0) {
-            alert('すべての必須項目を入力してください。');
-            return;
-        }
-
+        
         const foods = [];
         for (let i = 0; i < foodNames.length; i++) {
-            const foodInput = document.querySelector(`input[name="food_name[]"]:nth-of-type(${i + 1})`);
-            const foodId = foodInput?.dataset.foodId;
+            const input = document.querySelector(`input[name="food_name[]"][value="${foodNames[i]}"]`);
+            const foodId = input ? input.dataset.foodId : null;
             
             if (!foodId) {
-                alert(`食品「${foodNames[i]}」を候補から選択してください。`);
+                alert(`${foodNames[i]} は有効な食品を選択してください`);
                 return;
             }
             
@@ -174,300 +383,36 @@ class NutritionApp {
                 quantity: parseFloat(quantities[i])
             });
         }
-
-        const mealData = {
-            date: date,
-            meal_type: mealType,
-            foods: foods
-        };
-
+        
         try {
-            const response = await fetch(`${this.apiBase}meal_record.php`, {
+            const response = await fetch('api/meal_record.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(mealData)
+                body: JSON.stringify({
+                    date: date,
+                    meal_type: mealType,
+                    foods: foods
+                })
             });
-
+            
             const result = await response.json();
-
+            
             if (result.error) {
-                alert('エラー: ' + result.error);
+                alert('記録エラー: ' + result.error);
                 return;
             }
-
-            alert('食事記録が保存されました！');
+            
+            alert('食事記録が追加されました！');
             document.getElementById('meal-form').reset();
-            this.setTodayDate();
-            this.loadCharts(); // グラフの更新
+            
+            // グラフを更新
+            this.loadDailyNutrition();
+            this.loadWeeklyTrend();
             
         } catch (error) {
-            console.error('食事記録エラー:', error);
-            alert('記録の保存に失敗しました。');
-        }
-    }
-
-    async loadCharts() {
-        try {
-            await Promise.all([
-                this.loadDailyNutritionChart(),
-                this.loadWeeklyTrendChart(),
-                this.loadMonthlyIntakeChart()
-            ]);
-        } catch (error) {
-            console.error('グラフ読み込みエラー:', error);
-        }
-    }
-
-    async loadDailyNutritionChart() {
-        try {
-            const today = new Date().toISOString().split('T')[0];
-            const response = await fetch(`${this.apiBase}nutrition_summary.php?type=daily&date=${today}`);
-            const data = await response.json();
-
-            if (data.error) {
-                console.error('日次データエラー:', data.error);
-                return;
-            }
-
-            const ctx = document.getElementById('daily-nutrition-chart').getContext('2d');
-            
-            if (this.charts.daily) {
-                this.charts.daily.destroy();
-            }
-
-            const achievements = data.achievements;
-            const labels = Object.keys(achievements);
-            const rates = Object.values(achievements).map(item => item.rate);
-
-            this.charts.daily = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: '達成率 (%)',
-                        data: rates,
-                        backgroundColor: rates.map(rate => 
-                            rate >= 100 ? '#28a745' : 
-                            rate >= 80 ? '#ffc107' : 
-                            rate >= 50 ? '#fd7e14' : '#dc3545'
-                        ),
-                        borderColor: '#333',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 150,
-                            ticks: {
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: '達成率 (%)'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: '栄養素'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const nutrient = Object.keys(achievements)[context.dataIndex];
-                                    const data = achievements[nutrient];
-                                    const consumed = parseFloat(data.consumed) || 0;
-                                    const target = parseFloat(data.target) || 1;
-                                    return `${consumed.toFixed(1)}${data.unit} / ${target}${data.unit} (${context.parsed.y.toFixed(1)}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-        } catch (error) {
-            console.error('日次グラフエラー:', error);
-        }
-    }
-
-    async loadWeeklyTrendChart() {
-        try {
-            const today = new Date().toISOString().split('T')[0];
-            const response = await fetch(`${this.apiBase}nutrition_summary.php?type=weekly&date=${today}`);
-            const data = await response.json();
-
-            if (data.error) {
-                console.error('週次データエラー:', data.error);
-                return;
-            }
-
-            const ctx = document.getElementById('weekly-trend-chart').getContext('2d');
-            
-            if (this.charts.weekly) {
-                this.charts.weekly.destroy();
-            }
-
-            const labels = data.data.map(item => {
-                const date = new Date(item.meal_date);
-                return `${date.getMonth() + 1}/${date.getDate()}`;
-            });
-
-            this.charts.weekly = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'エネルギー達成率 (%)',
-                            data: data.data.map(item => (item.total_energy_kcal / 2000) * 100),
-                            borderColor: '#667eea',
-                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                            tension: 0.4
-                        },
-                        {
-                            label: 'タンパク質達成率 (%)',
-                            data: data.data.map(item => (item.total_protein_g / 60) * 100),
-                            borderColor: '#f093fb',
-                            backgroundColor: 'rgba(240, 147, 251, 0.1)',
-                            tension: 0.4
-                        },
-                        {
-                            label: '脂質達成率 (%)',
-                            data: data.data.map(item => (item.total_fat_g / 65) * 100),
-                            borderColor: '#f6d55c',
-                            backgroundColor: 'rgba(246, 213, 92, 0.1)',
-                            tension: 0.4
-                        },
-                        {
-                            label: '炭水化物達成率 (%)',
-                            data: data.data.map(item => (item.total_carbohydrate_g / 250) * 100),
-                            borderColor: '#20bf6b',
-                            backgroundColor: 'rgba(32, 191, 107, 0.1)',
-                            tension: 0.4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 150,
-                            ticks: {
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: '達成率 (%)'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        }
-                    }
-                }
-            });
-
-        } catch (error) {
-            console.error('週次グラフエラー:', error);
-        }
-    }
-
-    async loadMonthlyIntakeChart() {
-        try {
-            const today = new Date().toISOString().split('T')[0];
-            const response = await fetch(`${this.apiBase}nutrition_summary.php?type=monthly&date=${today}`);
-            const data = await response.json();
-
-            if (data.error) {
-                console.error('月次データエラー:', data.error);
-                return;
-            }
-
-            const ctx = document.getElementById('monthly-intake-chart').getContext('2d');
-            
-            if (this.charts.monthly) {
-                this.charts.monthly.destroy();
-            }
-
-            const labels = data.data.map(item => {
-                const date = new Date(item.meal_date);
-                return date.getDate();
-            });
-
-            this.charts.monthly = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'エネルギー達成率 (%)',
-                        data: data.data.map(item => (item.total_energy_kcal / 2000) * 100),
-                        backgroundColor: data.data.map(item => {
-                            const rate = (item.total_energy_kcal / 2000) * 100;
-                            return rate >= 100 ? 'rgba(40, 167, 69, 0.8)' : 
-                                   rate >= 80 ? 'rgba(255, 193, 7, 0.8)' : 
-                                   rate >= 50 ? 'rgba(253, 126, 20, 0.8)' : 'rgba(220, 53, 69, 0.8)';
-                        }),
-                        borderColor: '#667eea',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 150,
-                            ticks: {
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: '達成率 (%)'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: '日'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        }
-                    }
-                }
-            });
-
-        } catch (error) {
-            console.error('月次グラフエラー:', error);
+            alert('記録エラー: ' + error.message);
         }
     }
 }
@@ -476,23 +421,3 @@ class NutritionApp {
 document.addEventListener('DOMContentLoaded', () => {
     new NutritionApp();
 });
-
-// 削除ボタン用のCSS追加
-const style = document.createElement('style');
-style.textContent = `
-    .btn-remove {
-        background-color: #dc3545;
-        color: white;
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 3px;
-        cursor: pointer;
-        font-size: 0.9rem;
-        margin-top: 0.5rem;
-    }
-    
-    .btn-remove:hover {
-        background-color: #c82333;
-    }
-`;
-document.head.appendChild(style);

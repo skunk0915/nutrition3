@@ -124,14 +124,44 @@ try {
             break;
             
         case 'daily_by_meal':
-            // 食事別の栄養摂取量
+            // 食事別の栄養摂取量（全栄養素対応）
             $sql = "
                 SELECT 
                     meal_type,
-                    SUM(f.カロリー * mr.quantity_g / 100) as meal_energy_kcal,
-                    SUM(f.たんぱく質 * mr.quantity_g / 100) as meal_protein_g,
-                    SUM(f.脂質 * mr.quantity_g / 100) as meal_fat_g,
-                    SUM(f.炭水化物 * mr.quantity_g / 100) as meal_carbohydrate_g
+                    SUM(f.カロリー * mr.quantity_g / 100) as energy_kcal,
+                    SUM(f.たんぱく質 * mr.quantity_g / 100) as protein_g,
+                    SUM(f.脂質 * mr.quantity_g / 100) as fat_g,
+                    SUM(f.飽和脂肪酸 * mr.quantity_g / 100) as saturated_fat_g,
+                    SUM(f.`n-6系多価不飽和脂肪酸` * mr.quantity_g / 100) as n6_fat_g,
+                    SUM(f.`n-3系多価不飽和脂肪酸` * mr.quantity_g / 100) as n3_fat_g,
+                    SUM(f.炭水化物 * mr.quantity_g / 100) as carbohydrate_g,
+                    SUM(f.食物繊維総量 * mr.quantity_g / 100) as fiber_g,
+                    SUM(f.レチノール活性当量 * mr.quantity_g / 100) as vitamin_a_ug,
+                    SUM(f.ビタミンD * mr.quantity_g / 100) as vitamin_d_ug,
+                    SUM(f.α_トコフェロール * mr.quantity_g / 100) as vitamin_e_mg,
+                    SUM(f.ビタミンK * mr.quantity_g / 100) as vitamin_k_ug,
+                    SUM(f.ビタミンB1 * mr.quantity_g / 100) as vitamin_b1_mg,
+                    SUM(f.ビタミンB2 * mr.quantity_g / 100) as vitamin_b2_mg,
+                    SUM(f.ビタミンB6 * mr.quantity_g / 100) as vitamin_b6_mg,
+                    SUM(f.ビタミンB12 * mr.quantity_g / 100) as vitamin_b12_ug,
+                    SUM(f.ナイアシン * mr.quantity_g / 100) as niacin_mg,
+                    SUM(f.葉酸 * mr.quantity_g / 100) as folate_ug,
+                    SUM(f.パントテン酸 * mr.quantity_g / 100) as pantothenic_acid_mg,
+                    SUM(f.ビオチン * mr.quantity_g / 100) as biotin_ug,
+                    SUM(f.ビタミンC * mr.quantity_g / 100) as vitamin_c_mg,
+                    SUM(f.ナトリウム * mr.quantity_g / 100) as sodium_mg,
+                    SUM(f.カリウム * mr.quantity_g / 100) as potassium_mg,
+                    SUM(f.カルシウム * mr.quantity_g / 100) as calcium_mg,
+                    SUM(f.マグネシウム * mr.quantity_g / 100) as magnesium_mg,
+                    SUM(f.リン * mr.quantity_g / 100) as phosphorus_mg,
+                    SUM(f.鉄 * mr.quantity_g / 100) as iron_mg,
+                    SUM(f.亜鉛 * mr.quantity_g / 100) as zinc_mg,
+                    SUM(f.銅 * mr.quantity_g / 100) as copper_mg,
+                    SUM(f.マンガン * mr.quantity_g / 100) as manganese_mg,
+                    SUM(f.ヨウ素 * mr.quantity_g / 100) as iodine_ug,
+                    SUM(f.セレン * mr.quantity_g / 100) as selenium_ug,
+                    SUM(f.クロム * mr.quantity_g / 100) as chromium_ug,
+                    SUM(f.モリブデン * mr.quantity_g / 100) as molybdenum_ug
                 FROM meal_records mr
                 JOIN foods f ON mr.food_id = f.id
                 WHERE mr.user_id = 1 AND mr.meal_date = :date
@@ -149,21 +179,57 @@ try {
             $stmt->execute([':date' => $date]);
             $results = $stmt->fetchAll();
             
-            jsonResponse(['date' => $date, 'meals' => $results]);
+            // 栄養目標値を取得
+            $target_sql = "SELECT * FROM nutrition_targets WHERE user_id = 1 LIMIT 1";
+            $target_stmt = $pdo->prepare($target_sql);
+            $target_stmt->execute();
+            $targets = $target_stmt->fetch();
+            
+            jsonResponse(['date' => $date, 'meals' => $results, 'targets' => $targets]);
             break;
             
         case 'weekly':
-            // 週間の栄養推移
-            $start_date = date('Y-m-d', strtotime($date . ' -6 days'));
-            $end_date = $date;
+            // 週間の栄養推移（期間指定対応）
+            $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d', strtotime($date . ' -6 days'));
+            $end_date = isset($_GET['end_date']) ? $_GET['end_date'] : $date;
             
             $sql = "
                 SELECT 
                     meal_date,
-                    COALESCE(SUM(f.カロリー * mr.quantity_g / 100), 0) as total_energy_kcal,
-                    COALESCE(SUM(f.たんぱく質 * mr.quantity_g / 100), 0) as total_protein_g,
-                    COALESCE(SUM(f.脂質 * mr.quantity_g / 100), 0) as total_fat_g,
-                    COALESCE(SUM(f.炭水化物 * mr.quantity_g / 100), 0) as total_carbohydrate_g
+                    COALESCE(SUM(f.カロリー * mr.quantity_g / 100), 0) as energy_kcal,
+                    COALESCE(SUM(f.たんぱく質 * mr.quantity_g / 100), 0) as protein_g,
+                    COALESCE(SUM(f.脂質 * mr.quantity_g / 100), 0) as fat_g,
+                    COALESCE(SUM(f.飽和脂肪酸 * mr.quantity_g / 100), 0) as saturated_fat_g,
+                    COALESCE(SUM(f.`n-6系多価不飽和脂肪酸` * mr.quantity_g / 100), 0) as n6_fat_g,
+                    COALESCE(SUM(f.`n-3系多価不飽和脂肪酸` * mr.quantity_g / 100), 0) as n3_fat_g,
+                    COALESCE(SUM(f.炭水化物 * mr.quantity_g / 100), 0) as carbohydrate_g,
+                    COALESCE(SUM(f.食物繊維総量 * mr.quantity_g / 100), 0) as fiber_g,
+                    COALESCE(SUM(f.レチノール活性当量 * mr.quantity_g / 100), 0) as vitamin_a_ug,
+                    COALESCE(SUM(f.ビタミンD * mr.quantity_g / 100), 0) as vitamin_d_ug,
+                    COALESCE(SUM(f.α_トコフェロール * mr.quantity_g / 100), 0) as vitamin_e_mg,
+                    COALESCE(SUM(f.ビタミンK * mr.quantity_g / 100), 0) as vitamin_k_ug,
+                    COALESCE(SUM(f.ビタミンB1 * mr.quantity_g / 100), 0) as vitamin_b1_mg,
+                    COALESCE(SUM(f.ビタミンB2 * mr.quantity_g / 100), 0) as vitamin_b2_mg,
+                    COALESCE(SUM(f.ビタミンB6 * mr.quantity_g / 100), 0) as vitamin_b6_mg,
+                    COALESCE(SUM(f.ビタミンB12 * mr.quantity_g / 100), 0) as vitamin_b12_ug,
+                    COALESCE(SUM(f.ナイアシン * mr.quantity_g / 100), 0) as niacin_mg,
+                    COALESCE(SUM(f.葉酸 * mr.quantity_g / 100), 0) as folate_ug,
+                    COALESCE(SUM(f.パントテン酸 * mr.quantity_g / 100), 0) as pantothenic_acid_mg,
+                    COALESCE(SUM(f.ビオチン * mr.quantity_g / 100), 0) as biotin_ug,
+                    COALESCE(SUM(f.ビタミンC * mr.quantity_g / 100), 0) as vitamin_c_mg,
+                    COALESCE(SUM(f.ナトリウム * mr.quantity_g / 100), 0) as sodium_mg,
+                    COALESCE(SUM(f.カリウム * mr.quantity_g / 100), 0) as potassium_mg,
+                    COALESCE(SUM(f.カルシウム * mr.quantity_g / 100), 0) as calcium_mg,
+                    COALESCE(SUM(f.マグネシウム * mr.quantity_g / 100), 0) as magnesium_mg,
+                    COALESCE(SUM(f.リン * mr.quantity_g / 100), 0) as phosphorus_mg,
+                    COALESCE(SUM(f.鉄 * mr.quantity_g / 100), 0) as iron_mg,
+                    COALESCE(SUM(f.亜鉛 * mr.quantity_g / 100), 0) as zinc_mg,
+                    COALESCE(SUM(f.銅 * mr.quantity_g / 100), 0) as copper_mg,
+                    COALESCE(SUM(f.マンガン * mr.quantity_g / 100), 0) as manganese_mg,
+                    COALESCE(SUM(f.ヨウ素 * mr.quantity_g / 100), 0) as iodine_ug,
+                    COALESCE(SUM(f.セレン * mr.quantity_g / 100), 0) as selenium_ug,
+                    COALESCE(SUM(f.クロム * mr.quantity_g / 100), 0) as chromium_ug,
+                    COALESCE(SUM(f.モリブデン * mr.quantity_g / 100), 0) as molybdenum_ug
                 FROM meal_records mr
                 JOIN foods f ON mr.food_id = f.id
                 WHERE mr.user_id = 1 
@@ -179,68 +245,53 @@ try {
             ]);
             $results = $stmt->fetchAll();
             
-            // 7日分のデータを作成（データがない日は0で埋める）
-            $weekly_data = [];
-            for ($i = 0; $i < 7; $i++) {
-                $current_date = date('Y-m-d', strtotime($start_date . ' +' . $i . ' days'));
+            // 期間分のデータを作成（データがない日は0で埋める）
+            $period_data = [];
+            $start = new DateTime($start_date);
+            $end = new DateTime($end_date);
+            $interval = new DateInterval('P1D');
+            $period = new DatePeriod($start, $interval, $end->modify('+1 day'));
+            
+            foreach ($period as $date) {
+                $current_date = $date->format('Y-m-d');
                 $found = false;
                 
                 foreach ($results as $result) {
                     if ($result['meal_date'] === $current_date) {
-                        $weekly_data[] = $result;
+                        $period_data[] = $result;
                         $found = true;
                         break;
                     }
                 }
                 
                 if (!$found) {
-                    $weekly_data[] = [
+                    $period_data[] = [
                         'meal_date' => $current_date,
-                        'total_energy_kcal' => 0,
-                        'total_protein_g' => 0,
-                        'total_fat_g' => 0,
-                        'total_carbohydrate_g' => 0
+                        'energy_kcal' => 0, 'protein_g' => 0, 'fat_g' => 0, 'saturated_fat_g' => 0,
+                        'n6_fat_g' => 0, 'n3_fat_g' => 0, 'carbohydrate_g' => 0, 'fiber_g' => 0,
+                        'vitamin_a_ug' => 0, 'vitamin_d_ug' => 0, 'vitamin_e_mg' => 0, 'vitamin_k_ug' => 0,
+                        'vitamin_b1_mg' => 0, 'vitamin_b2_mg' => 0, 'vitamin_b6_mg' => 0, 'vitamin_b12_ug' => 0,
+                        'niacin_mg' => 0, 'folate_ug' => 0, 'pantothenic_acid_mg' => 0, 'biotin_ug' => 0,
+                        'vitamin_c_mg' => 0, 'sodium_mg' => 0, 'potassium_mg' => 0, 'calcium_mg' => 0,
+                        'magnesium_mg' => 0, 'phosphorus_mg' => 0, 'iron_mg' => 0, 'zinc_mg' => 0,
+                        'copper_mg' => 0, 'manganese_mg' => 0, 'iodine_ug' => 0, 'selenium_ug' => 0,
+                        'chromium_ug' => 0, 'molybdenum_ug' => 0
                     ];
                 }
             }
             
-            jsonResponse(['period' => $start_date . ' to ' . $end_date, 'data' => $weekly_data]);
+            // 栄養目標値を取得
+            $target_sql = "SELECT * FROM nutrition_targets WHERE user_id = 1 LIMIT 1";
+            $target_stmt = $pdo->prepare($target_sql);
+            $target_stmt->execute();
+            $targets = $target_stmt->fetch();
+            
+            jsonResponse(['period' => $start_date . ' to ' . $end_date, 'data' => $period_data, 'targets' => $targets]);
             break;
             
-        case 'monthly':
-            // 月間の栄養摂取量
-            $year = date('Y', strtotime($date));
-            $month = date('m', strtotime($date));
-            $start_date = $year . '-' . $month . '-01';
-            $end_date = date('Y-m-t', strtotime($start_date));
-            
-            $sql = "
-                SELECT 
-                    meal_date,
-                    SUM(f.カロリー * mr.quantity_g / 100) as total_energy_kcal,
-                    SUM(f.たんぱく質 * mr.quantity_g / 100) as total_protein_g,
-                    SUM(f.脂質 * mr.quantity_g / 100) as total_fat_g,
-                    SUM(f.炭水化物 * mr.quantity_g / 100) as total_carbohydrate_g
-                FROM meal_records mr
-                JOIN foods f ON mr.food_id = f.id
-                WHERE mr.user_id = 1 
-                    AND mr.meal_date BETWEEN :start_date AND :end_date
-                GROUP BY meal_date
-                ORDER BY meal_date
-            ";
-            
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([
-                ':start_date' => $start_date,
-                ':end_date' => $end_date
-            ]);
-            $results = $stmt->fetchAll();
-            
-            jsonResponse(['period' => $year . '年' . $month . '月', 'data' => $results]);
-            break;
             
         default:
-            errorResponse('無効なtypeパラメータです。daily, daily_by_meal, weekly, monthly のいずれかを指定してください');
+            errorResponse('無効なtypeパラメータです。daily, daily_by_meal, weekly のいずれかを指定してください');
     }
     
 } catch (PDOException $e) {
