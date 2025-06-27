@@ -41,6 +41,9 @@ class NutritionApp {
             startDate: null,
             endDate: null
         };
+        this.currentCalendarDate = new Date();
+        this.recordDates = [];
+        this.selectedDate = null;
         this.init();
     }
 
@@ -72,6 +75,21 @@ class NutritionApp {
         // 期間更新ボタン
         document.getElementById('update-period').addEventListener('click', () => {
             this.updatePeriod();
+        });
+
+        // 履歴ボタン
+        document.getElementById('open-history').addEventListener('click', () => {
+            this.openHistoryModal();
+        });
+
+        // モーダル閉じるボタン
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('close')) {
+                this.closeModals();
+            }
+            if (e.target.classList.contains('modal')) {
+                this.closeModals();
+            }
         });
 
         // 食品検索（動的に追加される要素に対応）
@@ -251,7 +269,7 @@ class NutritionApp {
         const datasets = Object.keys(this.nutrients).map((nutrient, index) => {
             const nutrientInfo = this.nutrients[nutrient];
             return {
-                label: `${nutrient}達成率 (%)`,
+                label: `${nutrient}`,
                 data: data.data.map(item => {
                     const value = Math.max(0, parseFloat(item[nutrientInfo.key] || 0));
                     return Math.max(0, (value / nutrientInfo.target) * 100);
@@ -439,9 +457,244 @@ class NutritionApp {
             alert('記録エラー: ' + error.message);
         }
     }
+
+    // 履歴モーダルを開く
+    async openHistoryModal() {
+        document.getElementById('history-modal').style.display = 'block';
+        await this.loadRecordDates();
+        this.renderCalendar();
+        this.loadHistoryList();
+    }
+
+    // モーダルを閉じる
+    closeModals() {
+        document.getElementById('history-modal').style.display = 'none';
+        document.getElementById('edit-modal').style.display = 'none';
+    }
+
+    // 記録がある日付を取得
+    async loadRecordDates() {
+        try {
+            const response = await fetch('api/meal_record.php?history=1');
+            const data = await response.json();
+            this.recordDates = data.map(item => item.meal_date);
+        } catch (error) {
+            console.error('記録日付取得エラー:', error);
+        }
+    }
+
+    // カレンダーを描画
+    renderCalendar() {
+        const calendar = document.getElementById('calendar');
+        const year = this.currentCalendarDate.getFullYear();
+        const month = this.currentCalendarDate.getMonth();
+        
+        const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+        const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+        
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const startDate = new Date(firstDay);
+        startDate.setDate(startDate.getDate() - firstDay.getDay());
+        
+        let html = `
+            <div class="calendar-header">
+                <button class="calendar-nav" onclick="app.previousMonth()">&lt;</button>
+                <span>${year}年 ${monthNames[month]}</span>
+                <button class="calendar-nav" onclick="app.nextMonth()">&gt;</button>
+            </div>
+            <div class="calendar-grid">
+        `;
+        
+        // 曜日ヘッダー
+        dayNames.forEach(day => {
+            html += `<div class="calendar-day-header">${day}</div>`;
+        });
+        
+        // 日付
+        for (let i = 0; i < 42; i++) {
+            const date = new Date(startDate);
+            date.setDate(startDate.getDate() + i);
+            
+            const dateStr = date.toISOString().split('T')[0];
+            const isCurrentMonth = date.getMonth() === month;
+            const hasRecords = this.recordDates.includes(dateStr);
+            const isSelected = this.selectedDate === dateStr;
+            
+            let classes = ['calendar-day'];
+            if (!isCurrentMonth) classes.push('other-month');
+            if (hasRecords) classes.push('has-records');
+            if (isSelected) classes.push('selected');
+            
+            html += `<div class="${classes.join(' ')}" onclick="app.selectDate('${dateStr}')">${date.getDate()}</div>`;
+        }
+        
+        html += '</div>';
+        calendar.innerHTML = html;
+    }
+
+    // カレンダー操作
+    previousMonth() {
+        this.currentCalendarDate.setMonth(this.currentCalendarDate.getMonth() - 1);
+        this.renderCalendar();
+    }
+
+    nextMonth() {
+        this.currentCalendarDate.setMonth(this.currentCalendarDate.getMonth() + 1);
+        this.renderCalendar();
+    }
+
+    selectDate(dateStr) {
+        this.selectedDate = dateStr;
+        this.renderCalendar();
+        this.loadHistoryList(dateStr);
+    }
+
+    // 履歴リストを読み込み
+    async loadHistoryList(filterDate = null) {
+        try {
+            const url = filterDate ? `api/meal_record.php?date=${filterDate}` : 'api/meal_record.php?history=1';
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (filterDate) {
+                this.renderDayHistory(data, filterDate);
+            } else {
+                this.renderFullHistory();
+            }
+        } catch (error) {
+            console.error('履歴取得エラー:', error);
+        }
+    }
+
+    // 特定日の履歴を表示
+    async renderDayHistory(records, date) {
+        const historyList = document.getElementById('history-list');
+        
+        if (records.length === 0) {
+            historyList.innerHTML = '<p>この日の記録はありません。</p>';
+            return;
+        }
+        
+        const mealTypes = {
+            'breakfast': '朝食',
+            'lunch': '昼食', 
+            'dinner': '夕食',
+            'snack': '間食'
+        };
+        
+        // 食事タイプごとにグループ化
+        const groupedRecords = {};
+        records.forEach(record => {
+            if (!groupedRecords[record.meal_type]) {
+                groupedRecords[record.meal_type] = [];
+            }
+            groupedRecords[record.meal_type].push(record);
+        });
+        
+        let html = `<div class="history-list">
+            <div class="date-group">
+                <div class="date-header">
+                    <span>${new Date(date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    <span>${records.length}件</span>
+                </div>`;
+        
+        Object.keys(groupedRecords).forEach(mealType => {
+            html += `<div class="meal-group">
+                <div class="meal-header">
+                    <span class="meal-type-label">${mealTypes[mealType]}</span>
+                    <span>${groupedRecords[mealType].length}件</span>
+                </div>`;
+            
+            groupedRecords[mealType].forEach(record => {
+                const totalCalories = (record.energy_kcal * record.quantity_g / 100).toFixed(1);
+                html += `<div class="record-item">
+                    <div class="food-info">
+                        <div class="food-name">${record.food_name}</div>
+                        <div class="food-details">${record.quantity_g}g (${totalCalories}kcal)</div>
+                    </div>
+                    <div class="record-actions">
+                        <button class="btn-edit" onclick="app.editRecord(${record.record_id})">編集</button>
+                        <button class="btn-delete" onclick="app.deleteRecord(${record.record_id})">削除</button>
+                    </div>
+                </div>`;
+            });
+            
+            html += '</div>';
+        });
+        
+        html += '</div></div>';
+        historyList.innerHTML = html;
+    }
+
+    // 全履歴を表示
+    async renderFullHistory() {
+        const historyList = document.getElementById('history-list');
+        historyList.innerHTML = '<p>日付を選択すると、その日の記録が表示されます。</p>';
+    }
+
+    // 記録編集
+    async editRecord(recordId) {
+        try {
+            const response = await fetch(`api/meal_record.php?record_id=${recordId}`);
+            const record = await response.json();
+            
+            // 編集モーダルに値を設定
+            document.getElementById('edit-date').value = record.meal_date;
+            document.getElementById('edit-meal-type').value = record.meal_type;
+            
+            // 編集モーダルを表示
+            document.getElementById('edit-modal').style.display = 'block';
+            
+        } catch (error) {
+            console.error('記録取得エラー:', error);
+            alert('記録の取得に失敗しました');
+        }
+    }
+
+    // 記録削除
+    async deleteRecord(recordId) {
+        if (!confirm('この記録を削除しますか？')) return;
+        
+        try {
+            const response = await fetch('api/meal_record.php', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ record_id: recordId })
+            });
+            
+            const result = await response.json();
+            
+            if (result.error) {
+                alert('削除エラー: ' + result.error);
+                return;
+            }
+            
+            alert('記録が削除されました');
+            
+            // 履歴を再読み込み
+            await this.loadRecordDates();
+            this.renderCalendar();
+            if (this.selectedDate) {
+                this.loadHistoryList(this.selectedDate);
+            }
+            
+            // グラフも更新
+            this.loadDailyNutrition();
+            this.loadWeeklyTrend();
+            
+        } catch (error) {
+            alert('削除エラー: ' + error.message);
+        }
+    }
 }
+
+// グローバル参照用
+let app;
 
 // アプリケーション初期化
 document.addEventListener('DOMContentLoaded', () => {
-    new NutritionApp();
+    app = new NutritionApp();
 });

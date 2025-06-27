@@ -72,14 +72,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// 食事記録の更新
+if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    if (!$input || !isset($input['record_id'])) {
+        errorResponse('record_id が必要です');
+    }
+    
+    $record_id = $input['record_id'];
+    $quantity = floatval($input['quantity']);
+    
+    if ($quantity <= 0) {
+        errorResponse('分量は正の値である必要があります');
+    }
+    
+    try {
+        $stmt = $pdo->prepare("UPDATE meal_records SET quantity_g = :quantity WHERE record_id = :record_id AND user_id = 1");
+        $stmt->execute([
+            ':quantity' => $quantity,
+            ':record_id' => $record_id
+        ]);
+        
+        if ($stmt->rowCount() === 0) {
+            errorResponse('記録が見つかりません', 404);
+        }
+        
+        jsonResponse(['success' => true, 'message' => '記録が更新されました']);
+        
+    } catch (Exception $e) {
+        errorResponse('更新エラー: ' . $e->getMessage(), 500);
+    }
+}
+
+// 食事記録の削除
+if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    if (!$input || !isset($input['record_id'])) {
+        errorResponse('record_id が必要です');
+    }
+    
+    $record_id = $input['record_id'];
+    
+    try {
+        $stmt = $pdo->prepare("DELETE FROM meal_records WHERE record_id = :record_id AND user_id = 1");
+        $stmt->execute([':record_id' => $record_id]);
+        
+        if ($stmt->rowCount() === 0) {
+            errorResponse('記録が見つかりません', 404);
+        }
+        
+        jsonResponse(['success' => true, 'message' => '記録が削除されました']);
+        
+    } catch (Exception $e) {
+        errorResponse('削除エラー: ' . $e->getMessage(), 500);
+    }
+}
+
 // 食事記録の取得
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $date = isset($_GET['date']) ? $_GET['date'] : '';
     $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : '';
     $end_date = isset($_GET['end_date']) ? $_GET['end_date'] : '';
+    $history = isset($_GET['history']) ? $_GET['history'] : false;
     
     try {
-        if ($date) {
+        if ($history) {
+            // 履歴一覧取得（記録がある日付のリスト）
+            $sql = "
+                SELECT DISTINCT 
+                    meal_date,
+                    COUNT(*) as record_count
+                FROM meal_records 
+                WHERE user_id = 1 
+                GROUP BY meal_date 
+                ORDER BY meal_date DESC
+            ";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute();
+            $results = $stmt->fetchAll();
+            
+            jsonResponse($results);
+            
+        } else if ($date) {
             // 特定日の記録取得
             $sql = "
                 SELECT 
