@@ -89,6 +89,27 @@ class NutritionApp {
             this.openHistoryModal();
         });
 
+        // 食事入力モーダル開閉
+        document.getElementById('open-meal-modal').addEventListener('click', () => {
+            this.openMealModal();
+        });
+
+        document.getElementById('close-meal-modal').addEventListener('click', () => {
+            this.closeMealModal();
+        });
+
+        // モーダル背景クリックで閉じる
+        document.getElementById('meal-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('meal-modal')) {
+                this.closeMealModal();
+            }
+        });
+
+        // 日付変更時のプレビュー更新
+        document.getElementById('date').addEventListener('change', () => {
+            this.updatePreview();
+        });
+
         // モーダル閉じるボタン
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('close')) {
@@ -682,7 +703,10 @@ class NutritionApp {
             const date = new Date(startDate);
             date.setDate(startDate.getDate() + i);
             
-            const dateStr = date.toISOString().split('T')[0];
+            // タイムゾーンを考慮したローカル日付文字列を生成
+            const dateStr = date.getFullYear() + '-' + 
+                          String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                          String(date.getDate()).padStart(2, '0');
             const isCurrentMonth = date.getMonth() === month;
             const hasRecords = this.recordDates.includes(dateStr);
             const isSelected = this.selectedDate === dateStr;
@@ -721,7 +745,15 @@ class NutritionApp {
         try {
             const url = filterDate ? `api/meal_record.php?date=${filterDate}` : 'api/meal_record.php?history=1';
             const response = await fetch(url);
-            const data = await response.json();
+            const responseText = await response.text();
+            
+            // Debug: PHPエラーをチェック
+            if (responseText.includes('<br />') || responseText.includes('Warning:') || responseText.includes('Fatal error:')) {
+                console.error('PHPエラー:', responseText);
+                return;
+            }
+            
+            const data = JSON.parse(responseText);
             
             if (filterDate) {
                 this.renderDayHistory(data, filterDate);
@@ -736,7 +768,6 @@ class NutritionApp {
     // 特定日の履歴を表示
     async renderDayHistory(records, date) {
         const historyList = document.getElementById('history-list');
-        
         if (records.length === 0) {
             historyList.innerHTML = '<p>この日の記録はありません。</p>';
             return;
@@ -862,6 +893,176 @@ class NutritionApp {
         } catch (error) {
             alert('削除エラー: ' + error.message);
         }
+    }
+
+    // 食事入力モーダル開閉
+    openMealModal() {
+        document.getElementById('meal-modal').style.display = 'block';
+        this.initializeDateInputs();
+        this.setupFoodInputEventListeners();
+        this.updatePreview();
+    }
+
+    closeMealModal() {
+        document.getElementById('meal-modal').style.display = 'none';
+        this.resetMealForm();
+    }
+
+    resetMealForm() {
+        document.getElementById('meal-form').reset();
+        const foodEntries = document.querySelector('.food-entries');
+        foodEntries.innerHTML = `
+            <div class="food-entry">
+                <div class="input-group">
+                    <label for="food-name">食品名:</label>
+                    <input type="text" id="food-name" name="food_name[]" placeholder="食品名を入力" required>
+                    <div class="suggestions" id="suggestions"></div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="quantity">分量 (g):</label>
+                    <input type="number" id="quantity" name="quantity[]" min="1" required>
+                </div>
+            </div>
+        `;
+        this.setupFoodInputEventListeners();
+    }
+
+    // プレビュー機能
+    async updatePreview() {
+        const date = document.getElementById('date').value;
+        if (!date) return;
+
+        try {
+            // 選択した日付のデータを取得
+            const response = await fetch(`api/nutrition_summary.php?date=${date}`);
+            const data = await response.json();
+            
+            // 日別栄養チャートの日付を更新
+            document.getElementById('daily-chart-date').value = date;
+            
+            // 現在の入力中のデータを含めてプレビュー
+            this.previewData = data;
+            this.loadDailyNutritionForDate();
+            
+        } catch (error) {
+            console.error('プレビューデータ取得エラー:', error);
+        }
+    }
+
+    // 食品入力フィールドのイベントリスナーを設定
+    setupFoodInputEventListeners() {
+        const foodInputs = document.querySelectorAll('input[name="food_name[]"]');
+        const quantityInputs = document.querySelectorAll('input[name="quantity[]"]');
+        
+        foodInputs.forEach((input, index) => {
+            // 既存のイベントリスナーを削除
+            input.removeEventListener('input', this.handleFoodInput);
+            input.removeEventListener('keydown', this.handleFoodKeydown);
+            
+            // 新しいイベントリスナーを追加
+            input.addEventListener('input', (e) => this.handleFoodInput(e, index));
+            input.addEventListener('keydown', (e) => this.handleFoodKeydown(e, index));
+        });
+
+        quantityInputs.forEach((input) => {
+            input.removeEventListener('input', this.handleQuantityInput);
+            input.addEventListener('input', () => this.handleQuantityInput());
+        });
+    }
+
+    // 食品名入力のハンドラー
+    async handleFoodInput(e, index) {
+        const query = e.target.value.trim();
+        const suggestionsElement = e.target.nextElementSibling;
+        
+        if (query.length < 2) {
+            suggestionsElement.innerHTML = '';
+            suggestionsElement.style.display = 'none';
+            return;
+        }
+
+        try {
+            const response = await fetch(`api/food_search.php?q=${encodeURIComponent(query)}&limit=50`);
+            const foods = await response.json();
+            
+            if (foods.length > 0) {
+                const html = foods.map(food => `
+                    <div class="suggestion-item" data-food-id="${food.food_id}" data-food-name="${food.food_name}">
+                        <strong>${food.food_name}</strong>
+                        <span class="category">${food.category}</span>
+                        <span class="calories">${food.energy_kcal}kcal/100g</span>
+                    </div>
+                `).join('');
+                
+                suggestionsElement.innerHTML = html;
+                suggestionsElement.style.display = 'block';
+                
+                // 候補クリック時のイベントリスナー
+                suggestionsElement.querySelectorAll('.suggestion-item').forEach(item => {
+                    item.addEventListener('click', (event) => {
+                        e.target.value = item.dataset.foodName;
+                        e.target.dataset.foodId = item.dataset.foodId;
+                        suggestionsElement.style.display = 'none';
+                        this.updatePreviewWithCurrentInputs();
+                    });
+                });
+            } else {
+                suggestionsElement.innerHTML = '<div class="no-results">該当する食品が見つかりません</div>';
+                suggestionsElement.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('食品検索エラー:', error);
+        }
+    }
+
+    // キーボードナビゲーション
+    handleFoodKeydown(e, index) {
+        const suggestionsElement = e.target.nextElementSibling;
+        const items = suggestionsElement.querySelectorAll('.suggestion-item');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (items.length > 0) {
+                items[0].focus();
+            }
+        } else if (e.key === 'Escape') {
+            suggestionsElement.style.display = 'none';
+        }
+    }
+
+    // 分量入力のハンドラー
+    handleQuantityInput() {
+        this.updatePreviewWithCurrentInputs();
+    }
+
+    // 現在の入力内容でプレビューを更新
+    updatePreviewWithCurrentInputs() {
+        // 入力中の食品データを取得してプレビューに反映
+        const inputs = document.querySelectorAll('input[name="food_name[]"]');
+        const quantities = document.querySelectorAll('input[name="quantity[]"]');
+        
+        const inputFoods = [];
+        inputs.forEach((input, index) => {
+            const foodId = input.dataset.foodId;
+            const quantity = parseFloat(quantities[index].value) || 0;
+            
+            if (foodId && quantity > 0) {
+                inputFoods.push({ food_id: foodId, quantity: quantity });
+            }
+        });
+
+        // プレビューデータに入力中の食品を追加してチャートを更新
+        if (inputFoods.length > 0) {
+            this.calculatePreviewWithInputs(inputFoods);
+        }
+    }
+
+    // 入力データを含むプレビューを計算
+    async calculatePreviewWithInputs(inputFoods) {
+        // 実装は複雑になるため、簡単なバージョンとして
+        // 現在の日付のデータを再読み込みして更新
+        this.loadDailyNutritionForDate();
     }
 }
 

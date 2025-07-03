@@ -181,6 +181,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             
             $stmt = $pdo->prepare($sql);
             $stmt->execute([':date' => $date]);
+            $results = $stmt->fetchAll();
+            
+            jsonResponse($results);
             
         } else if ($start_date && $end_date) {
             // 期間の記録取得
@@ -204,13 +207,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 ':start_date' => $start_date,
                 ':end_date' => $end_date
             ]);
+            $results = $stmt->fetchAll();
+            
+            jsonResponse($results);
             
         } else {
             errorResponse('日付または期間の指定が必要です');
         }
-        
-        $results = $stmt->fetchAll();
-        jsonResponse($results);
         
     } catch (PDOException $e) {
         errorResponse('取得エラー: ' . $e->getMessage(), 500);

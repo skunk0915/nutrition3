@@ -6,7 +6,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 $query = isset($_GET['q']) ? trim($_GET['q']) : '';
-$limit = isset($_GET['limit']) ? intval($_GET['limit']) : 10;
+$limit = isset($_GET['limit']) ? intval($_GET['limit']) : 100;
 
 if (empty($query)) {
     errorResponse('検索クエリが必要です');
