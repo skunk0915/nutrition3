@@ -264,6 +264,38 @@ main {
     box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
 }
 
+/* 日付選択コントロール */
+.date-selector {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #e9ecef;
+}
+
+.date-selector label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+.date-selector input[type="date"] {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: white;
+}
+
+.date-selector input[type="date"]:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
 /* レスポンシブデザイン */
 @media (max-width: 768px) {
     .container {
