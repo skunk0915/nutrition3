@@ -22,6 +22,7 @@ try {
                     COALESCE(dns.total_vitamin_c_mg, 0) as consumed_vitamin_c_mg,
                     COALESCE(dns.total_calcium_mg, 0) as consumed_calcium_mg,
                     COALESCE(dns.total_iron_mg, 0) as consumed_iron_mg,
+                    COALESCE(dns.total_sodium_mg, 0) as consumed_sodium_mg,
                     nt.energy_kcal_target,
                     nt.protein_g_target,
                     nt.fat_g_target,
@@ -29,7 +30,8 @@ try {
                     nt.fiber_g_target,
                     nt.vitamin_c_mg_target,
                     nt.calcium_mg_target,
-                    nt.iron_mg_target
+                    nt.iron_mg_target,
+                    nt.sodium_mg_target
                 FROM nutrition_targets nt
                 LEFT JOIN daily_nutrition_summary dns ON nt.user_id = dns.user_id AND dns.meal_date = :date
                 WHERE nt.user_id = 1
@@ -80,24 +82,6 @@ try {
                     'consumed' => floatval($result['consumed_sodium_mg'] ?? 0),
                     'target' => floatval($result['sodium_mg_target'] ?? 2300),
                     'rate' => ($result['sodium_mg_target'] ?? 2300) > 0 ? (floatval($result['consumed_sodium_mg'] ?? 0) / floatval($result['sodium_mg_target'] ?? 2300)) * 100 : 0,
-                    'unit' => 'mg'
-                ],
-                'ビタミンA' => [
-                    'consumed' => floatval($result['consumed_vitamin_a_ug'] ?? 0),
-                    'target' => floatval($result['vitamin_a_ug_target'] ?? 800),
-                    'rate' => ($result['vitamin_a_ug_target'] ?? 800) > 0 ? (floatval($result['consumed_vitamin_a_ug'] ?? 0) / floatval($result['vitamin_a_ug_target'] ?? 800)) * 100 : 0,
-                    'unit' => 'μg'
-                ],
-                'ビタミンB1' => [
-                    'consumed' => floatval($result['consumed_vitamin_b1_mg'] ?? 0),
-                    'target' => floatval($result['vitamin_b1_mg_target'] ?? 1.2),
-                    'rate' => ($result['vitamin_b1_mg_target'] ?? 1.2) > 0 ? (floatval($result['consumed_vitamin_b1_mg'] ?? 0) / floatval($result['vitamin_b1_mg_target'] ?? 1.2)) * 100 : 0,
-                    'unit' => 'mg'
-                ],
-                'ビタミンB2' => [
-                    'consumed' => floatval($result['consumed_vitamin_b2_mg'] ?? 0),
-                    'target' => floatval($result['vitamin_b2_mg_target'] ?? 1.4),
-                    'rate' => ($result['vitamin_b2_mg_target'] ?? 1.4) > 0 ? (floatval($result['consumed_vitamin_b2_mg'] ?? 0) / floatval($result['vitamin_b2_mg_target'] ?? 1.4)) * 100 : 0,
                     'unit' => 'mg'
                 ],
                 'ビタミンC' => [
@@ -190,8 +174,8 @@ try {
             
         case 'weekly':
             // 週間の栄養推移（期間指定対応）
-            $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d', strtotime($date . ' -6 days'));
-            $end_date = isset($_GET['end_date']) ? $_GET['end_date'] : $date;
+            $start_date = isset($_GET['start_date']) && $_GET['start_date'] ? $_GET['start_date'] : date('Y-m-d', strtotime($date . ' -6 days'));
+            $end_date = isset($_GET['end_date']) && $_GET['end_date'] ? $_GET['end_date'] : $date;
             
             $sql = "
                 SELECT 
@@ -247,6 +231,23 @@ try {
             
             // 期間分のデータを作成（データがない日は0で埋める）
             $period_data = [];
+            
+            // 日付の検証とデフォルト値設定
+            if (empty($start_date) || !$start_date || $start_date === 'undefined' || $start_date === 'null') {
+                $start_date = date('Y-m-d', strtotime($date . ' -6 days'));
+            }
+            if (empty($end_date) || !$end_date || $end_date === 'undefined' || $end_date === 'null') {
+                $end_date = $date;
+            }
+            
+            // 日付フォーマットの追加検証
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $start_date)) {
+                $start_date = date('Y-m-d', strtotime($date . ' -6 days'));
+            }
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $end_date)) {
+                $end_date = $date;
+            }
+            
             $start = new DateTime($start_date);
             $end = new DateTime($end_date);
             $interval = new DateInterval('P1D');

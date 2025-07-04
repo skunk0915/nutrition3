@@ -201,21 +201,37 @@ class NutritionApp {
         this.createStackedBarChartWithPreview(data, null, null);
     }
 
-    clearPreview() {
-        this.previewData = null;
-        this.loadDailyNutrition();
-    }
 
     async loadWeeklyTrend() {
         try {
             const params = new URLSearchParams({
-                type: 'weekly',
-                start_date: this.periodSettings.startDate,
-                end_date: this.periodSettings.endDate
+                type: 'weekly'
             });
             
+            // 有効な日付のみをパラメータに追加
+            if (this.periodSettings.startDate && this.periodSettings.startDate !== 'undefined' && this.periodSettings.startDate !== 'null') {
+                params.append('start_date', this.periodSettings.startDate);
+            }
+            if (this.periodSettings.endDate && this.periodSettings.endDate !== 'undefined' && this.periodSettings.endDate !== 'null') {
+                params.append('end_date', this.periodSettings.endDate);
+            }
+            
             const response = await fetch(`api/nutrition_summary.php?${params}`);
-            const data = await response.json();
+            
+            if (!response.ok) {
+                console.error('HTTPエラー:', response.status, response.statusText);
+                return;
+            }
+            
+            const responseText = await response.text();
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('JSON解析エラー:', parseError);
+                console.error('レスポンス内容:', responseText);
+                return;
+            }
             
             if (data.error) {
                 console.error('データ取得エラー:', data.error);
@@ -324,14 +340,25 @@ class NutritionApp {
     }
 
     async updatePreview() {
+        console.log('updatePreview called');
         const mealType = document.getElementById('meal-type').value;
-        if (!mealType) return;
+        console.log('mealType:', mealType);
+        if (!mealType) {
+            // 食事タイプが選択されていない場合、プレビューをクリア
+            this.loadDailyNutrition();
+            return;
+        }
 
         const previewNutrition = this.calculatePreviewNutrition();
-        if (!previewNutrition) return;
+        console.log('previewNutrition:', previewNutrition);
+        if (!previewNutrition) {
+            // 有効な食品データがない場合、プレビューをクリア
+            this.loadDailyNutrition();
+            return;
+        }
 
         try {
-            let date = document.getElementById('daily-chart-date').value;
+            let date = document.getElementById('date').value;
             if (!date) {
                 const today = new Date();
                 date = today.getFullYear() + '-' + 
@@ -340,7 +367,21 @@ class NutritionApp {
             }
             
             const response = await fetch(`api/nutrition_summary.php?type=daily_by_meal&date=${date}`);
-            const data = await response.json();
+            
+            if (!response.ok) {
+                console.error('HTTPエラー:', response.status, response.statusText);
+                return;
+            }
+            
+            const responseText = await response.text();
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('JSON解析エラー:', parseError);
+                console.error('レスポンス内容:', responseText);
+                return;
+            }
             
             if (data.error) {
                 console.error('データ取得エラー:', data.error);
@@ -357,17 +398,29 @@ class NutritionApp {
         const foodInputs = document.querySelectorAll('input[name="food_name[]"]');
         const quantityInputs = document.querySelectorAll('input[name="quantity[]"]');
         
+        console.log('foodInputs.length:', foodInputs.length);
+        console.log('quantityInputs.length:', quantityInputs.length);
+        
         let totalNutrition = {};
+        let hasValidData = false;
         
         for (let i = 0; i < foodInputs.length; i++) {
             const foodInput = foodInputs[i];
             const quantityInput = quantityInputs[i];
+            
+            console.log(`Input ${i}:`, {
+                nutritionData: foodInput.dataset.nutritionData,
+                quantity: quantityInput.value
+            });
             
             if (!foodInput.dataset.nutritionData || !quantityInput.value) continue;
             
             try {
                 const nutritionData = JSON.parse(foodInput.dataset.nutritionData);
                 const quantity = parseFloat(quantityInput.value);
+                
+                console.log('nutritionData:', nutritionData);
+                console.log('quantity:', quantity);
                 
                 Object.keys(this.nutrients).forEach(nutrientName => {
                     const nutrientKey = this.nutrients[nutrientName].key;
@@ -379,10 +432,15 @@ class NutritionApp {
                     }
                     totalNutrition[nutrientKey] += calculatedValue;
                 });
+                hasValidData = true;
             } catch (error) {
                 console.error('栄養計算エラー:', error);
             }
         }
+        
+        console.log('hasValidData:', hasValidData);
+        console.log('totalNutrition keys:', Object.keys(totalNutrition));
+        console.log('totalNutrition:', totalNutrition);
         
         return Object.keys(totalNutrition).length > 0 ? totalNutrition : null;
     }
@@ -556,6 +614,18 @@ class NutritionApp {
             newInput.remove();
         });
         
+        // 新しい入力フィールドにイベントリスナーを設定
+        const foodInput = newInput.querySelector('input[name="food_name[]"]');
+        const quantityInput = newInput.querySelector('input[name="quantity[]"]');
+        
+        foodInput.addEventListener('input', (e) => {
+            this.handleFoodSearch(e.target);
+        });
+        
+        quantityInput.addEventListener('input', () => {
+            this.updatePreview();
+        });
+        
         container.appendChild(newInput);
     }
 
@@ -633,7 +703,7 @@ class NutritionApp {
             console.log('Meal record saved successfully');
             alert('食事記録が追加されました！');
             document.getElementById('meal-form').reset();
-            this.clearPreview();
+            this.closeMealModal();
             
             // グラフを更新
             console.log('Updating charts after meal record...');
@@ -900,7 +970,7 @@ class NutritionApp {
         document.getElementById('meal-modal').style.display = 'block';
         this.initializeDateInputs();
         this.setupFoodInputEventListeners();
-        this.updatePreview();
+        this.updateDatePreview();
     }
 
     closeMealModal() {
@@ -914,28 +984,33 @@ class NutritionApp {
         foodEntries.innerHTML = `
             <div class="food-entry">
                 <div class="input-group">
-                    <label for="food-name">食品名:</label>
-                    <input type="text" id="food-name" name="food_name[]" placeholder="食品名を入力" required>
+                    <input type="text" id="food-name" name="food_name[]" placeholder="食品名を記入" required>
                     <div class="suggestions" id="suggestions"></div>
                 </div>
                 
                 <div class="input-group">
-                    <label for="quantity">分量 (g):</label>
-                    <input type="number" id="quantity" name="quantity[]" min="1" required>
+                    <input type="number" id="quantity" name="quantity[]" placeholder="例：500（グラム数を記入）" min="1" required>
                 </div>
             </div>
         `;
-        this.setupFoodInputEventListeners();
+        // 入力フィールドのデータ属性をクリア
+        const inputs = foodEntries.querySelectorAll('input[name="food_name[]"]');
+        inputs.forEach(input => {
+            delete input.dataset.foodId;
+            delete input.dataset.nutritionData;
+        });
+        this.initializeDateInputs();
+        this.loadDailyNutrition();
     }
 
     // プレビュー機能
-    async updatePreview() {
+    async updateDatePreview() {
         const date = document.getElementById('date').value;
         if (!date) return;
 
         try {
             // 選択した日付のデータを取得
-            const response = await fetch(`api/nutrition_summary.php?date=${date}`);
+            const response = await fetch(`api/nutrition_summary.php?type=daily&date=${date}`);
             const data = await response.json();
             
             // 日別栄養チャートの日付を更新
@@ -956,18 +1031,16 @@ class NutritionApp {
         const quantityInputs = document.querySelectorAll('input[name="quantity[]"]');
         
         foodInputs.forEach((input, index) => {
-            // 既存のイベントリスナーを削除
-            input.removeEventListener('input', this.handleFoodInput);
-            input.removeEventListener('keydown', this.handleFoodKeydown);
-            
             // 新しいイベントリスナーを追加
-            input.addEventListener('input', (e) => this.handleFoodInput(e, index));
-            input.addEventListener('keydown', (e) => this.handleFoodKeydown(e, index));
+            input.addEventListener('input', (e) => {
+                this.handleFoodSearch(e.target);
+            });
         });
 
         quantityInputs.forEach((input) => {
-            input.removeEventListener('input', this.handleQuantityInput);
-            input.addEventListener('input', () => this.handleQuantityInput());
+            input.addEventListener('input', () => {
+                this.updatePreview();
+            });
         });
     }
 
