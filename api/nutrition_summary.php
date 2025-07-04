@@ -1,5 +1,8 @@
 <?php
 require_once 'config.php';
+require_once 'utils.php';
+
+$userId = getAuthenticatedUserId();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     errorResponse('GET method required', 405);
@@ -34,12 +37,12 @@ try {
                     nt.sodium_mg_target
                 FROM nutrition_targets nt
                 LEFT JOIN daily_nutrition_summary dns ON nt.user_id = dns.user_id AND dns.meal_date = :date
-                WHERE nt.user_id = 1
+                WHERE nt.user_id = :user_id
                 LIMIT 1
             ";
             
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([':date' => $date]);
+            $stmt->execute([':date' => $date, ':user_id' => $userId]);
             $result = $stmt->fetch();
             
             if (!$result) {
@@ -148,7 +151,7 @@ try {
                     SUM(f.モリブデン * mr.quantity_g / 100) as molybdenum_ug
                 FROM meal_records mr
                 JOIN foods f ON mr.food_id = f.id
-                WHERE mr.user_id = 1 AND mr.meal_date = :date
+                WHERE mr.user_id = :user_id AND mr.meal_date = :date
                 GROUP BY meal_type
                 ORDER BY 
                     CASE meal_type
@@ -160,13 +163,13 @@ try {
             ";
             
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([':date' => $date]);
+            $stmt->execute([':date' => $date, ':user_id' => $userId]);
             $results = $stmt->fetchAll();
             
             // 栄養目標値を取得
-            $target_sql = "SELECT * FROM nutrition_targets WHERE user_id = 1 LIMIT 1";
+            $target_sql = "SELECT * FROM nutrition_targets WHERE user_id = :user_id LIMIT 1";
             $target_stmt = $pdo->prepare($target_sql);
-            $target_stmt->execute();
+            $target_stmt->execute([':user_id' => $userId]);
             $targets = $target_stmt->fetch();
             
             jsonResponse(['date' => $date, 'meals' => $results, 'targets' => $targets]);
@@ -216,7 +219,7 @@ try {
                     COALESCE(SUM(f.モリブデン * mr.quantity_g / 100), 0) as molybdenum_ug
                 FROM meal_records mr
                 JOIN foods f ON mr.food_id = f.id
-                WHERE mr.user_id = 1 
+                WHERE mr.user_id = :user_id 
                     AND mr.meal_date BETWEEN :start_date AND :end_date
                 GROUP BY meal_date
                 ORDER BY meal_date
@@ -225,7 +228,8 @@ try {
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
                 ':start_date' => $start_date,
-                ':end_date' => $end_date
+                ':end_date' => $end_date,
+                ':user_id' => $userId
             ]);
             $results = $stmt->fetchAll();
             
@@ -282,9 +286,9 @@ try {
             }
             
             // 栄養目標値を取得
-            $target_sql = "SELECT * FROM nutrition_targets WHERE user_id = 1 LIMIT 1";
+            $target_sql = "SELECT * FROM nutrition_targets WHERE user_id = :user_id LIMIT 1";
             $target_stmt = $pdo->prepare($target_sql);
-            $target_stmt->execute();
+            $target_stmt->execute([':user_id' => $userId]);
             $targets = $target_stmt->fetch();
             
             jsonResponse(['period' => $start_date . ' to ' . $end_date, 'data' => $period_data, 'targets' => $targets]);

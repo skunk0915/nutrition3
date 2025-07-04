@@ -26,6 +26,8 @@ nutrition3/
 │   └── app.js          # フロントエンドJavaScript
 ├── api/
 │   ├── config.php      # データベース設定
+│   ├── auth.php        # ユーザー登録・ログインAPI
+│   ├── profile.php     # プロフィール取得・更新API
 │   ├── food_search.php # 食品検索API
 │   ├── meal_record.php # 食事記録API
 │   └── nutrition_summary.php # 栄養集計API
@@ -92,6 +94,70 @@ Content-Type: application/json
 ### 栄養集計
 ```
 GET /api/nutrition_summary.php?type={daily|weekly|monthly}&date={date}
+```
+
+### 認証
+ユーザー登録・ログインで取得したトークンを各API呼び出し時の HTTP Header に付与してください。
+```
+Authorization: Bearer <token>
+```
+
+#### ユーザー登録
+```
+POST /api/auth.php?action=register
+Content-Type: application/json
+{
+  "email": "user@example.com",
+  "password": "password",
+  "age": 30,
+  "gender": "male"
+}
+```
+レスポンス:
+```
+{
+  "token": "<generated_token>"
+}
+```
+
+#### ログイン
+```
+POST /api/auth.php?action=login
+Content-Type: application/json
+{
+  "email": "user@example.com",
+  "password": "password"
+}
+```
+レスポンスは登録時と同じ形式でトークンを返します。
+
+### プロフィール取得・更新
+```
+GET /api/profile.php
+```
+レスポンス:
+```
+{
+  "email": "user@example.com",
+  "age": 30,
+  "gender": "male"
+}
+```
+
+```
+PUT /api/profile.php
+Authorization: Bearer <token>
+Content-Type: application/json
+{
+  "age": 35,
+  "gender": "female"
+}
+```
+成功時:
+```
+{
+  "success": true
+}
 ```
 
 ## 技術スタック

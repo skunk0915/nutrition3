@@ -1,12 +1,25 @@
 -- 栄養管理システム データベース設計
 
+-- ユーザーテーブル
+CREATE TABLE users (
+    user_id INT PRIMARY KEY AUTO_INCREMENT,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    age INT NOT NULL,
+    gender ENUM('male', 'female') NOT NULL,
+    auth_token CHAR(32) UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
 -- 食品情報テーブル (foods-0-5k.sqlからインポートされる)
 -- このテーブルは外部SQLファイルで作成・データ投入される
 
 -- 食事記録テーブル
 CREATE TABLE meal_records (
     record_id INT PRIMARY KEY AUTO_INCREMENT,
-    user_id INT DEFAULT 1, -- 現在は単一ユーザー対応
+    user_id INT NOT NULL,
     meal_date DATE NOT NULL,
     meal_type ENUM('breakfast', 'lunch', 'dinner', 'snack') NOT NULL,
     food_id INT NOT NULL,
@@ -15,6 +28,7 @@ CREATE TABLE meal_records (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     FOREIGN KEY (food_id) REFERENCES foods(id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
     INDEX idx_user_date (user_id, meal_date),
     INDEX idx_meal_type (meal_type)
 );
@@ -56,7 +70,8 @@ CREATE TABLE nutrition_targets (
     zinc_mg_target DECIMAL(8,2) DEFAULT 11,
     
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 
 -- 食品データはfoods-0-5k.sqlからインポートされます

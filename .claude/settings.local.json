@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:chatgpt.com)",
+      "Bash(mkdir:*)",
+      "Bash(mysql:*)",
+      "WebFetch(domain:www.otsuka.co.jp)",
+      "Bash(rg:*)",
+      "Bash(grep:*)",
+      "Bash(mv:*)",
+      "Bash(find:*)"
+    ],
+    "deny": []
+  }
+}

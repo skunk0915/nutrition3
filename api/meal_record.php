@@ -1,5 +1,8 @@
 <?php
 require_once 'config.php';
+require_once 'utils.php';
+
+$userId = getAuthenticatedUserId();
 
 // 食事記録の追加
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -40,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $stmt = $pdo->prepare("
             INSERT INTO meal_records (user_id, meal_date, meal_type, food_id, quantity_g) 
-            VALUES (1, :date, :meal_type, :food_id, :quantity)
+            VALUES (:user_id, :date, :meal_type, :food_id, :quantity)
         ");
         
         foreach ($foods as $food) {
@@ -56,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             $stmt->execute([
+                ':user_id' => $userId,
                 ':date' => $date,
                 ':meal_type' => $meal_type,
                 ':food_id' => $food_id,
@@ -88,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     }
     
     try {
-        $stmt = $pdo->prepare("UPDATE meal_records SET quantity_g = :quantity WHERE record_id = :record_id AND user_id = 1");
+        $stmt = $pdo->prepare("UPDATE meal_records SET quantity_g = :quantity WHERE record_id = :record_id AND user_id = :user_id");
         $stmt->execute([
             ':quantity' => $quantity,
             ':record_id' => $record_id
@@ -116,8 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     $record_id = $input['record_id'];
     
     try {
-        $stmt = $pdo->prepare("DELETE FROM meal_records WHERE record_id = :record_id AND user_id = 1");
-        $stmt->execute([':record_id' => $record_id]);
+        $stmt = $pdo->prepare("DELETE FROM meal_records WHERE record_id = :record_id AND user_id = :user_id");
+        $stmt->execute([':record_id' => $record_id, ':user_id' => $userId]);
         
         if ($stmt->rowCount() === 0) {
             errorResponse('記録が見つかりません', 404);
@@ -145,13 +149,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     meal_date,
                     COUNT(*) as record_count
                 FROM meal_records 
-                WHERE user_id = 1 
+                WHERE user_id = :user_id 
                 GROUP BY meal_date 
                 ORDER BY meal_date DESC
             ";
             
             $stmt = $pdo->prepare($sql);
-            $stmt->execute();
+            $stmt->execute([':user_id' => $userId]);
             $results = $stmt->fetchAll();
             
             jsonResponse($results);
@@ -175,12 +179,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     (f.炭水化物 * mr.quantity_g / 100) as consumed_carbohydrate_g
                 FROM meal_records mr
                 JOIN foods f ON mr.food_id = f.id
-                WHERE mr.user_id = 1 AND mr.meal_date = :date
+                WHERE mr.user_id = :user_id AND mr.meal_date = :date
                 ORDER BY mr.meal_type, mr.record_id
             ";
             
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([':date' => $date]);
+            $stmt->execute([':date' => $date, ':user_id' => $userId]);
             $results = $stmt->fetchAll();
             
             jsonResponse($results);
@@ -196,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     SUM(f.炭水化物 * mr.quantity_g / 100) as total_carbohydrate_g
                 FROM meal_records mr
                 JOIN foods f ON mr.food_id = f.id
-                WHERE mr.user_id = 1 
+                WHERE mr.user_id = :user_id 
                     AND mr.meal_date BETWEEN :start_date AND :end_date
                 GROUP BY meal_date
                 ORDER BY meal_date
@@ -205,7 +209,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
                 ':start_date' => $start_date,
-                ':end_date' => $end_date
+                ':end_date' => $end_date,
+                ':user_id' => $userId
             ]);
             $results = $stmt->fetchAll();
             

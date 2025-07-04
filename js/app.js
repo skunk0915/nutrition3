@@ -48,6 +48,18 @@ class NutritionApp {
         this.init();
     }
 
+    /**
+     * ローカルストレージから認証トークンを取得して Authorization ヘッダを返す
+     * @returns {Object} fetch 用ヘッダ
+     */
+    getAuthHeaders() {
+        const token = localStorage.getItem('authToken');
+        if (token) {
+            return { 'Authorization': `Bearer ${token}` };
+        }
+        return {};
+    }
+
     init() {
         this.initEventListeners();
         this.initializeDateInputs();
@@ -216,7 +228,9 @@ class NutritionApp {
                 params.append('end_date', this.periodSettings.endDate);
             }
             
-            const response = await fetch(`api/nutrition_summary.php?${params}`);
+            const response = await fetch(`api/nutrition_summary.php?${params.toString()}`, {
+                headers: this.getAuthHeaders()
+            });
             
             if (!response.ok) {
                 console.error('HTTPエラー:', response.status, response.statusText);
@@ -1010,7 +1024,9 @@ class NutritionApp {
 
         try {
             // 選択した日付のデータを取得
-            const response = await fetch(`api/nutrition_summary.php?type=daily&date=${date}`);
+            const response = await fetch(`api/nutrition_summary.php?type=daily&date=${date}`, {
+            headers: this.getAuthHeaders()
+        });
             const data = await response.json();
             
             // 日別栄養チャートの日付を更新
