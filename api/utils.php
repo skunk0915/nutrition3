@@ -8,19 +8,33 @@
 function getAuthenticatedUserId(): int {
     global $pdo;
     $headers = getallheaders();
-    if (!isset($headers['Authorization'])) {
+    
+    // 大文字小文字を無視してAuthorizationヘッダを探す
+    $authHeader = null;
+    foreach ($headers as $key => $value) {
+        if (strtolower($key) === 'authorization') {
+            $authHeader = $value;
+            break;
+        }
+    }
+    
+    if (!$authHeader) {
         errorResponse('認証トークンがありません', 401);
     }
-    if (!preg_match('/Bearer\s+(\w{32})/', $headers['Authorization'], $m)) {
+    
+    if (!preg_match('/Bearer\s+(\w{32})/', $authHeader, $m)) {
         errorResponse('トークン形式が無効です', 401);
     }
     $token = $m[1];
+    
     $stmt = $pdo->prepare('SELECT user_id FROM users WHERE auth_token = :t LIMIT 1');
     $stmt->execute([':t' => $token]);
     $row = $stmt->fetch();
+    
     if (!$row) {
         errorResponse('無効なトークン', 401);
     }
+    
     return intval($row['user_id']);
 }
 
@@ -78,6 +92,6 @@ function getReferenceTargets(?int $age, ?string $gender): array {
         'vitamin_c_mg_target'      => $vitaminC,
         'calcium_mg_target'        => $calcium,
         'iron_mg_target'           => $iron,
-        'sodium_mg_target'         => $sodiumNaCl * 393, // NaCl(g) → Na(mg) 1g食塩 ≒ 393mg Na
+        'sodium_mg_target'         => $sodiumNaCl, // すでにmg単位として扱う
     ];
 }

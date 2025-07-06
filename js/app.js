@@ -4,37 +4,37 @@ class NutritionApp {
         this.nutrients = {
             'エネルギー': { target: 2000, unit: 'kcal', key: 'energy_kcal' },
             'タンパク質': { target: 60, unit: 'g', key: 'protein_g' },
-            '脂質': { target: 65, unit: 'g', key: 'fat_g' },
-            '飽和脂肪酸': { target: 18, unit: 'g', key: 'saturated_fat_g' },
-            'n-6系脂肪酸': { target: 10, unit: 'g', key: 'n6_fat_g' },
-            'n-3系脂肪酸': { target: 2, unit: 'g', key: 'n3_fat_g' },
-            '炭水化物': { target: 250, unit: 'g', key: 'carbohydrate_g' },
-            '食物繊維': { target: 25, unit: 'g', key: 'fiber_g' },
-            'ビタミンA': { target: 800, unit: 'μg', key: 'vitamin_a_ug' },
-            'ビタミンD': { target: 10, unit: 'μg', key: 'vitamin_d_ug' },
-            'ビタミンE': { target: 15, unit: 'mg', key: 'vitamin_e_mg' },
-            'ビタミンK': { target: 120, unit: 'μg', key: 'vitamin_k_ug' },
+            '脂質（目標量）': { target: 65, unit: 'g', key: 'fat_g' },
+            '飽和脂肪酸（目標量）': { target: 18, unit: 'g', key: 'saturated_fat_g' },
+            'n-6系脂肪酸（目安量）': { target: 10, unit: 'g', key: 'n6_fat_g' },
+            'n-3系脂肪酸（目安量）': { target: 2, unit: 'g', key: 'n3_fat_g' },
+            '炭水化物（目標量）': { target: 250, unit: 'g', key: 'carbohydrate_g' },
+            '食物繊維（目標量）': { target: 25, unit: 'g', key: 'fiber_g' },
+            'ビタミンA※1': { target: 800, unit: 'μg', key: 'vitamin_a_ug' },
+            'ビタミンD（目安量）': { target: 10, unit: 'μg', key: 'vitamin_d_ug' },
+            'ビタミンE（目安量）': { target: 15, unit: 'mg', key: 'vitamin_e_mg' },
+            'ビタミンK（目安量）': { target: 120, unit: 'μg', key: 'vitamin_k_ug' },
             'ビタミンB1': { target: 1.2, unit: 'mg', key: 'vitamin_b1_mg' },
             'ビタミンB2': { target: 1.4, unit: 'mg', key: 'vitamin_b2_mg' },
             'ビタミンB6': { target: 1.4, unit: 'mg', key: 'vitamin_b6_mg' },
             'ビタミンB12': { target: 2.4, unit: 'μg', key: 'vitamin_b12_ug' },
             'ナイアシン': { target: 16, unit: 'mg', key: 'niacin_mg' },
             '葉酸': { target: 400, unit: 'μg', key: 'folate_ug' },
-            'パントテン酸': { target: 5, unit: 'mg', key: 'pantothenic_acid_mg' },
-            'ビオチン': { target: 50, unit: 'μg', key: 'biotin_ug' },
+            'パントテン酸（目安量）': { target: 5, unit: 'mg', key: 'pantothenic_acid_mg' },
+            'ビオチン（目安量）': { target: 50, unit: 'μg', key: 'biotin_ug' },
             'ビタミンC': { target: 90, unit: 'mg', key: 'vitamin_c_mg' },
-            'ナトリウム': { target: 2300, unit: 'mg', key: 'sodium_mg' },
-            'カリウム': { target: 3500, unit: 'mg', key: 'potassium_mg' },
+            'ナトリウム（食塩相当量）': { target: 2300, unit: 'mg', key: 'sodium_mg' },
+            'カリウム（目安量）': { target: 3500, unit: 'mg', key: 'potassium_mg' },
             'カルシウム': { target: 1000, unit: 'mg', key: 'calcium_mg' },
             'マグネシウム': { target: 400, unit: 'mg', key: 'magnesium_mg' },
-            'リン': { target: 700, unit: 'mg', key: 'phosphorus_mg' },
+            'リン（目安量）': { target: 700, unit: 'mg', key: 'phosphorus_mg' },
             '鉄': { target: 8, unit: 'mg', key: 'iron_mg' },
             '亜鉛': { target: 11, unit: 'mg', key: 'zinc_mg' },
             '銅': { target: 1, unit: 'mg', key: 'copper_mg' },
-            'マンガン': { target: 4, unit: 'mg', key: 'manganese_mg' },
+            'マンガン（目安量）': { target: 4, unit: 'mg', key: 'manganese_mg' },
             'ヨウ素': { target: 150, unit: 'μg', key: 'iodine_ug' },
             'セレン': { target: 60, unit: 'μg', key: 'selenium_ug' },
-            'クロム': { target: 35, unit: 'μg', key: 'chromium_ug' },
+            'クロム（目安量）': { target: 35, unit: 'μg', key: 'chromium_ug' },
             'モリブデン': { target: 45, unit: 'μg', key: 'molybdenum_ug' }
         };
         this.periodSettings = {
@@ -61,10 +61,134 @@ class NutritionApp {
     }
 
     init() {
+        this.checkAuthentication();
+        this.initAuthListeners();
         this.initEventListeners();
         this.initializeDateInputs();
-        this.loadInitialData();
         this.initializePeriodControls();
+    }
+
+    checkAuthentication() {
+        const token = localStorage.getItem('authToken');
+        if (token) {
+            this.showMainApp();
+        } else {
+            this.showAuthSection();
+        }
+    }
+
+    showAuthSection() {
+        document.getElementById('auth-section').style.display = 'flex';
+        document.getElementById('main-app').style.display = 'none';
+    }
+
+    showMainApp() {
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
+        this.loadInitialData();
+    }
+
+    initAuthListeners() {
+        // タブ切り替え
+        document.getElementById('login-tab').addEventListener('click', () => {
+            this.switchAuthTab('login');
+        });
+        document.getElementById('register-tab').addEventListener('click', () => {
+            this.switchAuthTab('register');
+        });
+
+        // フォーム送信
+        document.getElementById('login-form-element').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleLogin();
+        });
+        document.getElementById('register-form-element').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleRegister();
+        });
+    }
+
+    switchAuthTab(type) {
+        const loginTab = document.getElementById('login-tab');
+        const registerTab = document.getElementById('register-tab');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+
+        if (type === 'login') {
+            loginTab.classList.add('active');
+            registerTab.classList.remove('active');
+            loginForm.classList.add('active');
+            registerForm.classList.remove('active');
+        } else {
+            loginTab.classList.remove('active');
+            registerTab.classList.add('active');
+            loginForm.classList.remove('active');
+            registerForm.classList.add('active');
+        }
+    }
+
+    async handleLogin() {
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+
+        try {
+            const response = await fetch('api/auth.php?action=login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+
+            if (data.token) {
+                localStorage.setItem('authToken', data.token);
+                this.showMainApp();
+            } else {
+                alert('ログインに失敗しました: ' + (data.error || '不明なエラー'));
+            }
+        } catch (error) {
+            alert('ログインエラー: ' + error.message);
+        }
+    }
+
+    async handleRegister() {
+        const email = document.getElementById('register-email').value;
+        const password = document.getElementById('register-password').value;
+        const age = parseInt(document.getElementById('register-age').value);
+        const gender = document.getElementById('register-gender').value;
+
+        try {
+            const response = await fetch('api/auth.php?action=register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password, age, gender })
+            });
+
+            const responseText = await response.text();
+
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('JSON parse error:', parseError);
+                alert('サーバーエラー: ' + responseText.substring(0, 200));
+                return;
+            }
+
+            if (data.token) {
+                localStorage.setItem('authToken', data.token);
+                this.showMainApp();
+            } else {
+                alert('会員登録に失敗しました: ' + (data.error || '不明なエラー'));
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            alert('会員登録エラー: ' + error.message);
+        }
     }
 
     hexToRgba(hex, alpha) {
@@ -186,7 +310,9 @@ class NutritionApp {
         }
         
         try {
-            const response = await fetch(`api/nutrition_summary.php?type=daily_by_meal&date=${date}`);
+            const response = await fetch(`api/nutrition_summary.php?type=daily_by_meal&date=${date}`, {
+                headers: this.getAuthHeaders()
+            });
             const data = await response.json();
             
             if (data.error) {
@@ -354,9 +480,7 @@ class NutritionApp {
     }
 
     async updatePreview() {
-        console.log('updatePreview called');
         const mealType = document.getElementById('meal-type').value;
-        console.log('mealType:', mealType);
         if (!mealType) {
             // 食事タイプが選択されていない場合、プレビューをクリア
             this.loadDailyNutrition();
@@ -364,7 +488,6 @@ class NutritionApp {
         }
 
         const previewNutrition = this.calculatePreviewNutrition();
-        console.log('previewNutrition:', previewNutrition);
         if (!previewNutrition) {
             // 有効な食品データがない場合、プレビューをクリア
             this.loadDailyNutrition();
@@ -380,7 +503,9 @@ class NutritionApp {
                        String(today.getDate()).padStart(2, '0');
             }
             
-            const response = await fetch(`api/nutrition_summary.php?type=daily_by_meal&date=${date}`);
+            const response = await fetch(`api/nutrition_summary.php?type=daily_by_meal&date=${date}`, {
+                headers: this.getAuthHeaders()
+            });
             
             if (!response.ok) {
                 console.error('HTTPエラー:', response.status, response.statusText);
@@ -412,8 +537,6 @@ class NutritionApp {
         const foodInputs = document.querySelectorAll('input[name="food_name[]"]');
         const quantityInputs = document.querySelectorAll('input[name="quantity[]"]');
         
-        console.log('foodInputs.length:', foodInputs.length);
-        console.log('quantityInputs.length:', quantityInputs.length);
         
         let totalNutrition = {};
         let hasValidData = false;
@@ -422,19 +545,12 @@ class NutritionApp {
             const foodInput = foodInputs[i];
             const quantityInput = quantityInputs[i];
             
-            console.log(`Input ${i}:`, {
-                nutritionData: foodInput.dataset.nutritionData,
-                quantity: quantityInput.value
-            });
-            
             if (!foodInput.dataset.nutritionData || !quantityInput.value) continue;
             
             try {
                 const nutritionData = JSON.parse(foodInput.dataset.nutritionData);
                 const quantity = parseFloat(quantityInput.value);
                 
-                console.log('nutritionData:', nutritionData);
-                console.log('quantity:', quantity);
                 
                 Object.keys(this.nutrients).forEach(nutrientName => {
                     const nutrientKey = this.nutrients[nutrientName].key;
@@ -452,11 +568,7 @@ class NutritionApp {
             }
         }
         
-        console.log('hasValidData:', hasValidData);
-        console.log('totalNutrition keys:', Object.keys(totalNutrition));
-        console.log('totalNutrition:', totalNutrition);
-        
-        return Object.keys(totalNutrition).length > 0 ? totalNutrition : null;
+        return hasValidData ? totalNutrition : null;
     }
 
     createStackedBarChartWithPreview(data, previewNutrition, previewMealType) {
@@ -582,7 +694,9 @@ class NutritionApp {
         }
 
         try {
-            const response = await fetch(`api/food_search.php?q=${encodeURIComponent(query)}&limit=10`);
+            const response = await fetch(`api/food_search.php?q=${encodeURIComponent(query)}&limit=10`, {
+                headers: this.getAuthHeaders()
+            });
             const foods = await response.json();
             
             suggestionsDiv.innerHTML = '';
@@ -595,8 +709,6 @@ class NutritionApp {
                     input.value = food.food_name;
                     input.dataset.foodId = food.food_id;
                     input.dataset.nutritionData = JSON.stringify(food);
-                    console.log(`Food selected: ${food.food_name}, ID: ${food.food_id}`);
-                    console.log('Input dataset after selection:', input.dataset);
                     suggestionsDiv.innerHTML = '';
                     this.updatePreview();
                 });
@@ -650,7 +762,6 @@ class NutritionApp {
         const foodNames = formData.getAll('food_name[]');
         const quantities = formData.getAll('quantity[]');
         
-        console.log('Submit data:', { date, mealType, foodNames, quantities });
         
         const foods = [];
         const inputs = document.querySelectorAll('input[name="food_name[]"]');
@@ -662,17 +773,12 @@ class NutritionApp {
             for (let j = 0; j < inputs.length; j++) {
                 if (inputs[j].value === foodNames[i]) {
                     foodId = inputs[j].dataset.foodId;
-                    console.log(`Found food ID for ${foodNames[i]}: ${foodId}`);
                     break;
                 }
             }
             
             if (!foodId) {
                 console.error(`No food ID found for: ${foodNames[i]}`);
-                console.log('All inputs:', inputs);
-                inputs.forEach((input, idx) => {
-                    console.log(`Input ${idx}: value='${input.value}', foodId='${input.dataset.foodId}'`);
-                });
                 alert(`${foodNames[i]} は有効な食品を選択してください`);
                 return;
             }
@@ -683,7 +789,6 @@ class NutritionApp {
             });
         }
         
-        console.log('Foods to submit:', foods);
         
         try {
             const requestBody = {
@@ -692,21 +797,18 @@ class NutritionApp {
                 foods: foods
             };
             
-            console.log('Request body:', requestBody);
             
             const response = await fetch('api/meal_record.php', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    ...this.getAuthHeaders()
                 },
                 body: JSON.stringify(requestBody)
             });
             
-            console.log('Response status:', response.status);
-            console.log('Response headers:', response.headers);
             
             const result = await response.json();
-            console.log('Response result:', result);
             
             if (result.error) {
                 console.error('API Error:', result.error);
@@ -714,13 +816,11 @@ class NutritionApp {
                 return;
             }
             
-            console.log('Meal record saved successfully');
             alert('食事記録が追加されました！');
             document.getElementById('meal-form').reset();
             this.closeMealModal();
             
             // グラフを更新
-            console.log('Updating charts after meal record...');
             this.loadDailyNutrition();
             this.loadWeeklyTrend();
             
@@ -747,7 +847,9 @@ class NutritionApp {
     // 記録がある日付を取得
     async loadRecordDates() {
         try {
-            const response = await fetch('api/meal_record.php?history=1');
+            const response = await fetch('api/meal_record.php?history=1', {
+                headers: this.getAuthHeaders()
+            });
             const data = await response.json();
             this.recordDates = data.map(item => item.meal_date);
         } catch (error) {
@@ -828,7 +930,9 @@ class NutritionApp {
     async loadHistoryList(filterDate = null) {
         try {
             const url = filterDate ? `api/meal_record.php?date=${filterDate}` : 'api/meal_record.php?history=1';
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                headers: this.getAuthHeaders()
+            });
             const responseText = await response.text();
             
             // Debug: PHPエラーをチェック
@@ -925,7 +1029,9 @@ class NutritionApp {
     // 記録編集
     async editRecord(recordId) {
         try {
-            const response = await fetch(`api/meal_record.php?record_id=${recordId}`);
+            const response = await fetch(`api/meal_record.php?record_id=${recordId}`, {
+                headers: this.getAuthHeaders()
+            });
             const record = await response.json();
             
             // 編集モーダルに値を設定
@@ -949,7 +1055,8 @@ class NutritionApp {
             const response = await fetch('api/meal_record.php', {
                 method: 'DELETE',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    ...this.getAuthHeaders()
                 },
                 body: JSON.stringify({ record_id: recordId })
             });
@@ -1072,7 +1179,9 @@ class NutritionApp {
         }
 
         try {
-            const response = await fetch(`api/food_search.php?q=${encodeURIComponent(query)}&limit=50`);
+            const response = await fetch(`api/food_search.php?q=${encodeURIComponent(query)}&limit=50`, {
+                headers: this.getAuthHeaders()
+            });
             const foods = await response.json();
             
             if (foods.length > 0) {
