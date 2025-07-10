@@ -95,3 +95,225 @@ function getReferenceTargets(?int $age, ?string $gender): array {
         'sodium_mg_target'         => $sodiumNaCl, // すでにmg単位として扱う
     ];
 }
+
+/**
+ * グラフで表示する栄養素のリストを返す
+ * @return array
+ */
+function getNutritionLabels(): array {
+    return [
+        'エネルギー',
+        'タンパク質',
+        '脂質',
+        '飽和脂肪酸',
+        'n-6系脂肪酸',
+        'n-3系脂肪酸',
+        '炭水化物',
+        '食物繊維',
+        'ビタミンA',
+        'ビタミンD',
+        'ビタミンE',
+        'ビタミンK',
+        'ビタミンB1',
+        'ビタミンB2',
+        'ビタミンB6',
+        'ビタミンB12',
+        'ナイアシン',
+        '葉酸',
+        'パントテン酸',
+        'ビオチン',
+        'ビタミンC',
+        'ナトリウム（食塩相当量）',
+        'カリウム',
+        'カルシウム',
+        'マグネシウム',
+        'リン',
+        '鉄',
+        '亜鉛',
+        '銅',
+        'マンガン',
+        'ヨウ素',
+        'セレン',
+        'クロム',
+        'モリブデン'
+    ];
+}
+
+/**
+ * 栄養素名に対応するfoodsテーブルのカラム名を返す
+ * あすけんデータとその他データで異なるカラム名を考慮
+ * @param string $nutrient 栄養素名
+ * @param string $source データソース ('あすけん' または その他)
+ * @return string|null カラム名 または null（データなし）
+ */
+function getNutrientColumnName(string $nutrient, string $source): ?string {
+    $mapping = [
+        'エネルギー' => [
+            'あすけん' => 'カロリー',
+            'other' => 'カロリー'
+        ],
+        'タンパク質' => [
+            'あすけん' => 'たんぱく質',
+            'other' => 'たんぱく質'
+        ],
+        '脂質' => [
+            'あすけん' => '脂質',
+            'other' => '脂質（脂肪酸）'
+        ],
+        '飽和脂肪酸' => [
+            'あすけん' => '飽和脂肪酸（脂肪酸）',
+            'other' => '飽和脂肪酸'
+        ],
+        'n-6系脂肪酸' => [
+            'あすけん' => null,
+            'other' => null
+        ],
+        'n-3系脂肪酸' => [
+            'あすけん' => null,
+            'other' => null
+        ],
+        '炭水化物' => [
+            'あすけん' => '利用可能炭水化物単糖当量1',
+            'other' => '炭水化物'
+        ],
+        '食物繊維' => [
+            'あすけん' => '食物繊維総量',
+            'other' => '食物繊維総量'
+        ],
+        'ビタミンA' => [
+            'あすけん' => 'レチノール活性当量',
+            'other' => 'レチノール活性当量'
+        ],
+        'ビタミンD' => [
+            'あすけん' => null,
+            'other' => 'ビタミンD'
+        ],
+        'ビタミンE' => [
+            'あすけん' => 'α_トコフェロール',
+            'other' => 'α_トコフェロール'
+        ],
+        'ビタミンK' => [
+            'あすけん' => null,
+            'other' => 'ビタミンK'
+        ],
+        'ビタミンB1' => [
+            'あすけん' => 'ビタミンB1',
+            'other' => 'ビタミンB1'
+        ],
+        'ビタミンB2' => [
+            'あすけん' => 'ビタミンB2',
+            'other' => 'ビタミンB2'
+        ],
+        'ビタミンB6' => [
+            'あすけん' => null,
+            'other' => 'ビタミンB6'
+        ],
+        'ビタミンB12' => [
+            'あすけん' => null,
+            'other' => 'ビタミンB12'
+        ],
+        'ナイアシン' => [
+            'あすけん' => null,
+            'other' => 'ナイアシン当量'
+        ],
+        '葉酸' => [
+            'あすけん' => null,
+            'other' => '葉酸'
+        ],
+        'パントテン酸' => [
+            'あすけん' => null,
+            'other' => 'パントテン酸'
+        ],
+        'ビオチン' => [
+            'あすけん' => null,
+            'other' => 'ビオチン'
+        ],
+        'ビタミンC' => [
+            'あすけん' => 'ビタミンC',
+            'other' => 'ビタミンC'
+        ],
+        'ナトリウム（食塩相当量）' => [
+            'あすけん' => '食塩相当量',
+            'other' => '食塩相当量'
+        ],
+        'カリウム' => [
+            'あすけん' => null,
+            'other' => 'カリウム'
+        ],
+        'カルシウム' => [
+            'あすけん' => null,
+            'other' => 'カルシウム'
+        ],
+        'マグネシウム' => [
+            'あすけん' => null,
+            'other' => 'マグネシウム'
+        ],
+        'リン' => [
+            'あすけん' => null,
+            'other' => 'リン'
+        ],
+        '鉄' => [
+            'あすけん' => null,
+            'other' => '鉄'
+        ],
+        '亜鉛' => [
+            'あすけん' => null,
+            'other' => '亜鉛'
+        ],
+        '銅' => [
+            'あすけん' => null,
+            'other' => '銅'
+        ],
+        'マンガン' => [
+            'あすけん' => null,
+            'other' => 'マンガン'
+        ],
+        'ヨウ素' => [
+            'あすけん' => null,
+            'other' => 'ヨウ素'
+        ],
+        'セレン' => [
+            'あすけん' => null,
+            'other' => 'セレン'
+        ],
+        'クロム' => [
+            'あすけん' => null,
+            'other' => 'クロム'
+        ],
+        'モリブデン' => [
+            'あすけん' => null,
+            'other' => 'モリブデン'
+        ]
+    ];
+    
+    if (!isset($mapping[$nutrient])) {
+        return null;
+    }
+    
+    $sourceKey = $source === 'あすけん' ? 'あすけん' : 'other';
+    return $mapping[$nutrient][$sourceKey];
+}
+
+/**
+ * 栄養素に対応するSQL集計部分を生成
+ * @param string $nutrient 栄養素名
+ * @return string SQL文の一部
+ */
+function generateNutrientSql(string $nutrient): string {
+    $askenColumn = getNutrientColumnName($nutrient, 'あすけん');
+    $otherColumn = getNutrientColumnName($nutrient, 'その他');
+    
+    if ($askenColumn === null && $otherColumn === null) {
+        return "0 as `{$nutrient}`";
+    }
+    
+    if ($askenColumn === null) {
+        return "SUM(CASE WHEN f.`グループ` != 'あすけん' THEN COALESCE(f.`{$otherColumn}`, 0) * mr.quantity_g / 100 ELSE 0 END) as `{$nutrient}`";
+    }
+    
+    if ($otherColumn === null) {
+        return "SUM(CASE WHEN f.`グループ` = 'あすけん' THEN COALESCE(f.`{$askenColumn}`, 0) * mr.quantity_g / 100 ELSE 0 END) as `{$nutrient}`";
+    }
+    
+    return "SUM(CASE WHEN f.`グループ` = 'あすけん' THEN COALESCE(f.`{$askenColumn}`, 0) * mr.quantity_g / 100 ELSE COALESCE(f.`{$otherColumn}`, 0) * mr.quantity_g / 100 END) as `{$nutrient}`";
+}
